@@ -1,8 +1,4 @@
-// import { render } from 'preact'
-// import { App } from './app'
-// import './index.css'
-
-// render(<App />, document.getElementById('app')!)
+// Maybe custom events should be possible therefore this is used https://github.com/preactjs/preact-custom-element/pull/54
 import { h, cloneElement, render, hydrate } from "preact";
 
 export function register(Component, tagName, propNames, options) {

@@ -1,8 +1,12 @@
-import { Logo } from "./logo";
 import { useEffect, useState } from "preact/hooks";
 import InlineWorker from "./worker.js?worker&inline";
+import { Table } from "./table";
+//import "./index.css";
 const worker = new InlineWorker();
 export function App({ data, url }) {
+  const [selectedRows, setSelectedRows] = useState(["jklll"]);
+  const [query, setQuery] = useState("");
+  const [tableData, setTableData] = useState({ headers: [], rows: [] });
   const init = () => {
     console.log("init");
     if (url)
@@ -22,6 +26,7 @@ export function App({ data, url }) {
         });
     worker.onmessage = (ev) => {
       console.log({ ev });
+      if (ev.data.tableData) setTableData(ev.data.tableData);
     };
   };
   useEffect(() => {
@@ -30,28 +35,18 @@ export function App({ data, url }) {
   useEffect(() => {
     worker.postMessage({ data });
   }, [data]);
-  const [selectedRows, setSelectedRows] = useState(["jklll"]);
+  useEffect(() => {
+    worker.postMessage({ query });
+  }, [query]);
   return (
     <>
-      <Logo />
-      <pre>{JSON.stringify(selectedRows)}</pre>
-      <p>Hello Vite + Preact!</p>
-      <p>
-        <button
-          type="button"
-          onClick={(e) => setSelectedRows([...selectedRows, "jkl"])}
-        >
-          addrws
-        </button>
-        <a
-          class="link"
-          href="https://preactjs.com/"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn Preacts
-        </a>
-      </p>
+      <input
+        type="text"
+        value={query}
+        onInput={(e) => setQuery(e.target.value)}
+        placeholder="Search"
+      />
+      <Table tableData={tableData}></Table>
     </>
   );
 }

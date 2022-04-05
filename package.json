@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vite --open",
     "build": "tsc && vite build",
+    "buildnots": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
