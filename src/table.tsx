@@ -10,7 +10,7 @@ export function Table({ tableData = { headers: ["t"], rows: [["jkl"]] } }) {
         </tr>
       </thead>
       <tbody>
-        {rows.slice(0, 250).map((rowArray) => (
+        {rows.slice(0, 10).map((rowArray) => (
           <tr>
             {rowArray.map((cell) => (
               <td>{cell}</td>

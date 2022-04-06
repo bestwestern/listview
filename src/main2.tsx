@@ -9,6 +9,9 @@ el[0].data = {
   database: "covid",
   table: "ny_times_us_counties",
   is_view: false,
+  dateProps: {
+    date: "yyyy-mm-dd",
+  },
   human_description_en: 'where county = "Greene" sorted by date descending',
   rows: [
     [2369372, "2022-04-03", "Greene", "Alabama", 1063, 1868, 48],

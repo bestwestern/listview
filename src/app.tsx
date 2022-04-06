@@ -1,40 +1,40 @@
 import { useEffect, useState, useRef } from "preact/hooks";
 import InlineWorker from "./worker.js?worker&inline";
 import { Table } from "./table";
+import { EditColumns } from "./editcolumns";
 //import "./index.css";
 const worker = new InlineWorker();
 export function App({ data, url }) {
-  const [selectedRows, setSelectedRows] = useState(["jklll"]);
-  const [query, setQuery] = useState(
-    new URL(location.href).searchParams.get("query")
-  );
+  const currentUrl = new URL(location.href);
+  const [dataTypes, setDataTypes] = useState({});
+  const [chosenColumns, setChosenColumns] = useState([]);
+  const [editingColumns, setEditingColumns] = useState(true);
+  const [query, setQuery] = useState(currentUrl.searchParams.get("query"));
   const [tableData, setTableData] = useState({ headers: [], rows: [] });
   const timerRef = useRef(0);
   const didMount = useRef(false);
   const init = () => {
-    console.log();
     if (url)
       fetch(url)
         .then((response) => {
-          if (!response.ok) {
-            throw new Error("Network error");
-          }
+          if (!response.ok) throw new Error("Network error");
           return response.json();
         })
         .then((res) => {
           worker.postMessage({ data: res });
         })
         .catch((error) => {
-          console.error("Error:", error);
+          throw new Error("Network error" + JSON.stringify(error));
         });
-    // worker.onmessage = (ev) => {
-    //   if (ev.data.tableData) setTableData(ev.data.tableData);
-    // };
+    worker.onmessage = (ev) => {
+      if (ev.data.tableData) setTableData(ev.data.tableData);
+      if (ev.data.dataTypes) setDataTypes(ev.data.dataTypes);
+    };
+    worker.postMessage({ query });
     window.addEventListener("popstate", function () {
       setParamsFromUrl();
       console.log("location changed!");
     });
-    setParamsFromUrl();
   };
   const setParamsFromUrl = () => {
     console.log("updating params");
@@ -42,7 +42,6 @@ export function App({ data, url }) {
     setQuery(currentUrl.searchParams.get("query"));
   };
   const updateUrl = () => {
-    console.log("updating URL");
     let newUrl = window.location.origin + "/?";
     if (query.length) newUrl += "query=" + encodeURIComponent(query);
     if (location.href !== newUrl) window.history.pushState("", "", newUrl);
@@ -52,10 +51,9 @@ export function App({ data, url }) {
     init();
   }, []);
   useEffect(() => {
-    worker.postMessage({ data });
+    if (data) worker.postMessage({ data });
   }, [data]);
   useEffect(() => {
-    console.log({ query });
     if (didMount.current) {
       worker.postMessage({ query });
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -63,16 +61,38 @@ export function App({ data, url }) {
     }
     didMount.current = true;
   }, [query]);
-  console.log("running");
+  console.log({ chosenColumns });
   return (
-    <>
-      <input
-        type="text"
-        value={query}
-        onInput={(e) => setQuery(e.target.value)}
-        placeholder="Search"
-      />
+    <div>
+      <p>
+        <input
+          type="text"
+          value={query}
+          onInput={(e) => setQuery(e.target.value)}
+          placeholder="Search"
+        />
+      </p>
+      <pre>{JSON.stringify(dataTypes)}</pre>
+      {dataTypes && (
+        <>
+          <p>
+            <button
+              type="button"
+              onClick={(e) => setEditingColumns(!editingColumns)}
+            >
+              {editingColumns ? "Finish column edit" : "Edit columns"}
+            </button>
+          </p>
+          {editingColumns && (
+            <EditColumns
+              dataTypes={dataTypes}
+              chosenColumns={chosenColumns}
+              setChosenColumns={setChosenColumns}
+            />
+          )}
+        </>
+      )}
       <Table tableData={tableData}></Table>
-    </>
+    </div>
   );
 }
