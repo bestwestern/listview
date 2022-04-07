@@ -1,4 +1,6 @@
 
 
 https://www.geeksforgeeks.org/how-to-highlight-the-searched-string-result-using-javascript/
-columns choose (date choose format) drag drop?
+columns choose (date choose format dd-mm) drag drop?
+custom criteria
+stat analyse

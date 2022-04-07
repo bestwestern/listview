@@ -4,12 +4,20 @@ import { Table } from "./table";
 import { EditColumns } from "./editcolumns";
 //import "./index.css";
 const worker = new InlineWorker();
-export function App({ data, url }) {
+export function App(props) {
+  const { data, url, defaultdateformat = "d.d.yyyy" } = props;
   const currentUrl = new URL(location.href);
+  var col = currentUrl.searchParams.get("columns");
+
+  var kjl = JSON.parse(col);
+  console.log({ kjl });
   const [dataTypes, setDataTypes] = useState({});
   const [chosenColumns, setChosenColumns] = useState([]);
+  const [columnInfo, setColumnInfo] = useState({});
   const [editingColumns, setEditingColumns] = useState(true);
-  const [query, setQuery] = useState(currentUrl.searchParams.get("query"));
+  const [query, setQuery] = useState(
+    currentUrl.searchParams.get("query") || ""
+  );
   const [tableData, setTableData] = useState({ headers: [], rows: [] });
   const timerRef = useRef(0);
   const didMount = useRef(false);
@@ -43,7 +51,12 @@ export function App({ data, url }) {
   };
   const updateUrl = () => {
     let newUrl = window.location.origin + "/?";
-    if (query.length) newUrl += "query=" + encodeURIComponent(query);
+    if (query.length) newUrl += "&query=" + encodeURIComponent(query);
+    // chosenColumns.forEach(
+    //   (c, index) => (newUrl += "&c" + index + "=" + encodeURIComponent(c))
+    // );
+    if (chosenColumns.length)
+      newUrl += "&columns=" + encodeURIComponent(JSON.stringify(chosenColumns));
     if (location.href !== newUrl) window.history.pushState("", "", newUrl);
     //if no parameters just use location.href!
   };
@@ -54,6 +67,9 @@ export function App({ data, url }) {
     if (data) worker.postMessage({ data });
   }, [data]);
   useEffect(() => {
+    updateUrl();
+  }, [chosenColumns]);
+  useEffect(() => {
     if (didMount.current) {
       worker.postMessage({ query });
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -61,7 +77,6 @@ export function App({ data, url }) {
     }
     didMount.current = true;
   }, [query]);
-  console.log({ chosenColumns });
   return (
     <div>
       <p>
@@ -85,7 +100,10 @@ export function App({ data, url }) {
           </p>
           {editingColumns && (
             <EditColumns
+              defaultdateformat={defaultdateformat}
               dataTypes={dataTypes}
+              columnInfo={columnInfo}
+              setColumnInfo={setColumnInfo}
               chosenColumns={chosenColumns}
               setChosenColumns={setChosenColumns}
             />
