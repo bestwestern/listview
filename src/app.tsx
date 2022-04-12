@@ -3,6 +3,7 @@ import InlineWorker from "./worker.js?worker&inline";
 import { Table } from "./table";
 import { ColumnSettings } from "./columnsettings";
 import { CriteriaSection } from "./criteria";
+import { JSONfn } from "./jsonfn";
 //import "./index.css";
 const worker = new InlineWorker();
 export function App(props) {
@@ -59,7 +60,6 @@ export function App(props) {
     });
   };
   const setParamsFromUrl = () => {
-    console.log("urlchange - set params");
     const currentUrl = new URL(location.href);
     setQuery(currentUrl.searchParams.get("query") || "");
     const columnQuery = currentUrl.searchParams.get("columns");
@@ -93,6 +93,13 @@ export function App(props) {
     updateUrl();
     worker.postMessage({ criteria });
   }, [criteria]);
+  useEffect(() => {
+    customCriteria.forEach(({ shortName, filter }) =>
+      worker.postMessage({
+        customCriterion: { shortName, fctString: JSONfn.stringify(filter) },
+      })
+    );
+  }, [customCriteria]);
   useEffect(() => {
     if (didMount.current) {
       worker.postMessage({ query });

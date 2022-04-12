@@ -14,9 +14,10 @@ function setData() {
       tag: "x-counter",
       shortName: "div",
       header: "Id remainder",
-      filter: (row, value) => {
-        console.log({ row, value });
-        return true;
+      filter: (row, criterion) => {
+        const { c } = criterion;
+        if (!c) return true;
+        return row[0] % c == 0;
       },
     },
   ]),

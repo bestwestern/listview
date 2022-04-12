@@ -57,9 +57,6 @@ export function CriteriaSection({
           placeholder="Search"
         />
       </p>
-      {false && (
-        <x-counter value={3} onvaluechange={(v) => console.log(v)}></x-counter>
-      )}
       <pre>{JSON.stringify(criteria, null, 2)}</pre>
       {criteria.map((criterium, index) => {
         const { prop } = criterium;

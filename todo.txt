@@ -4,3 +4,4 @@ https://www.geeksforgeeks.org/how-to-highlight-the-searched-string-result-using-
 columns choose (date choose format dd-mm) drag drop?
 custom criteria
 stat analyse
+criteria analize

@@ -1,4 +1,5 @@
 import { stringToDate, dateToString } from "./util";
+import { JSONfn } from "./jsonfn";
 let dataDictionary = {};
 let idsAsSorted = [];
 let dataArray = [];
@@ -13,8 +14,16 @@ let dateProperties = {};
 let columnHeaders = {};
 let currentActiveCriteria = false;
 let currentCriteria = [];
+let customCriteria = {};
 onmessage = function (e) {
-  const { data, query, chosenColumns, defaultdateformat, criteria } = e.data;
+  const {
+    data,
+    query,
+    chosenColumns,
+    defaultdateformat,
+    criteria,
+    customCriterion,
+  } = e.data;
   if (data) {
     console.log(data);
     analyzeData(data, defaultdateformat);
@@ -37,26 +46,27 @@ onmessage = function (e) {
         JSON.stringify(currentActiveCriteria) !==
         JSON.stringify(newActiveCriteria)
       ) {
-        console.log(JSON.stringify(currentActiveCriteria));
-        console.log(JSON.stringify(newActiveCriteria));
         currentActiveCriteria = newActiveCriteria;
         searchResults = [];
         searchData(++searchCount);
       }
     }
   }
+  if (customCriterion) {
+    const { shortName, fctString } = customCriterion;
+    customCriteria[shortName] = JSONfn.parse(fctString);
+  }
 };
 const getActiveCriteriaFromArray = (criteriaArray) => {
-  return criteriaArray
-    .map((criterion) => {
-      const { prop, q } = criterion;
-      if (dataTypes[prop]) {
-        if (dataTypes[prop].string) {
-          if (q.trim().length) return criterion;
-        }
+  return criteriaArray.filter((criterion) => {
+    const { prop, q } = criterion;
+    if (dataTypes[prop]) {
+      if (dataTypes[prop].string) {
+        if (q.trim().length) return true;
       }
-    })
-    .filter((c) => c);
+    }
+    return true;
+  });
 };
 const analyzeData = (data, defaultdateformat) => {
   const { rows, dateProps } = data;
@@ -159,9 +169,14 @@ const doesRowCheckCriteria = (row) => {
     if (!criterion) return false;
     const { prop, q } = criterion;
     const dataType = dataTypes[prop];
-    const propValue = row[dataType.index];
-    if (dataType.string && !propValue.toLowerCase().includes(q.toLowerCase()))
-      return true;
+    if (dataType) {
+      const propValue = row[dataType.index];
+      if (dataType.string && !propValue.toLowerCase().includes(q.toLowerCase()))
+        return true;
+    }
+    if (customCriteria[prop]) {
+      return !customCriteria[prop](row, criterion);
+    }
   });
   return !firstCriterionNotChecked;
 };
