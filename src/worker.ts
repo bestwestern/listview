@@ -1,36 +1,74 @@
-import { stringToDate } from "./util";
+import { stringToDate, dateToString } from "./util";
 let dataDictionary = {};
 let idsAsSorted = [];
 let dataArray = [];
 let currentQuery = "";
-let latestRowString = "";
+let currentChosenColumns = [];
 let searchResults = [];
 let idIndex = -1;
 let searchCount = 0;
 let columns = [];
 let dataTypes = {};
 let dateProperties = {};
+let columnHeaders = {};
+let currentActiveCriteria = false;
+let currentCriteria = [];
 onmessage = function (e) {
-  const { data, query } = e.data;
-  if (data) analyzeData(data);
-  if (query) {
-    currentQuery = query;
+  const { data, query, chosenColumns, defaultdateformat, criteria } = e.data;
+  if (data) {
+    console.log(data);
+    analyzeData(data, defaultdateformat);
+  }
+  if (query !== undefined && query !== currentQuery) {
+    currentQuery = query || "";
     searchResults = [];
     searchData(++searchCount);
   }
-  var workerResult = "Result: ";
-  postMessage(workerResult);
+  if (chosenColumns) {
+    currentChosenColumns = chosenColumns;
+    sendSearchResult(dataArray.length);
+  }
+  if (criteria) {
+    if (!Object.keys(dataTypes).length) {
+      currentCriteria = criteria;
+    } else {
+      let newActiveCriteria = getActiveCriteriaFromArray(criteria);
+      if (
+        JSON.stringify(currentActiveCriteria) !==
+        JSON.stringify(newActiveCriteria)
+      ) {
+        console.log(JSON.stringify(currentActiveCriteria));
+        console.log(JSON.stringify(newActiveCriteria));
+        currentActiveCriteria = newActiveCriteria;
+        searchResults = [];
+        searchData(++searchCount);
+      }
+    }
+  }
 };
-const analyzeData = (data) => {
+const getActiveCriteriaFromArray = (criteriaArray) => {
+  return criteriaArray
+    .map((criterion) => {
+      const { prop, q } = criterion;
+      if (dataTypes[prop]) {
+        if (dataTypes[prop].string) {
+          if (q.trim().length) return criterion;
+        }
+      }
+    })
+    .filter((c) => c);
+};
+const analyzeData = (data, defaultdateformat) => {
   const { rows, dateProps } = data;
+  columnHeaders = data.columnHeaders || {};
   const dataColumns = data.columns;
   const colCount = dataColumns.length;
-  console.log(dataColumns);
   dataTypes = {};
   dateProperties = {};
   for (var colIndex = 0; colIndex < colCount; colIndex++) {
-    //columnPropToIndex[dataColumns[colIndex]] = colIndex;
-    dataTypes[dataColumns[colIndex]] = {};
+    //columnPropsearchToIndex[dataColumns[colIndex]] = colIndex;
+    const c = dataColumns[colIndex];
+    dataTypes[c] = { header: columnHeaders[c] || c };
   }
   if (dataColumns) {
     columns = dataColumns;
@@ -59,41 +97,80 @@ const analyzeData = (data) => {
       idsAsSorted.push(rowId);
       dataDictionary[rowId] = row;
     }
-    console.log(dataTypes);
-    postMessage({ dataTypes });
+    let sortedColArray = dataColumns.map((prop) => {
+      if (dataTypes[prop].date) return { prop, dateFormat: defaultdateformat };
+      else return { prop };
+    });
+    postMessage({ dataTypes, sortedColArray });
+    if (!currentChosenColumns.length)
+      postMessage({ setColumnsTo: sortedColArray });
   }
-  console.log("an fini");
+  if (!currentActiveCriteria)
+    currentActiveCriteria = getActiveCriteriaFromArray(currentCriteria);
   searchData(++searchCount);
 };
 const searchData = (currentSearchCount, fromIndex = 0) => {
-  if (!fromIndex)
-    console.log({ currentSearchCount, searchCount, currentQuery });
-  if (currentSearchCount !== searchCount) return;
-  const toIndex = Math.min(idsAsSorted.length, fromIndex + 100);
-  for (var rowIndex = fromIndex; rowIndex < toIndex; rowIndex++) {
+  if (!fromIndex) if (currentSearchCount !== searchCount) return;
+  const searchToIndex = Math.min(idsAsSorted.length, fromIndex + 100);
+  for (var rowIndex = fromIndex; rowIndex < searchToIndex; rowIndex++) {
     const row = dataArray[rowIndex];
-    for (var columnIndex = 0; columnIndex < row.length; columnIndex++) {
-      const column = row[columnIndex];
-      if (column.toString().toLowerCase().indexOf(currentQuery) > -1) {
-        searchResults.push(row[idIndex]);
-        break;
-      }
+    if (!currentQuery.trim().length || doesQueryCheck(row)) {
+      if (doesRowCheckCriteria(row)) searchResults.push(row[idIndex]);
     }
   }
 
-  sendSearchResult(toIndex);
-  if (toIndex < idsAsSorted.length)
-    setTimeout(() => searchData(currentSearchCount, toIndex), 1);
+  sendSearchResult(searchToIndex);
+  if (searchToIndex < idsAsSorted.length)
+    setTimeout(() => searchData(currentSearchCount, searchToIndex), 100);
 };
-const sendSearchResult = (toIndex: number) => {
-  const rows = searchResults.map((id) => {
-    let valArray = dataDictionary[id].slice(0);
-    Object.keys(dateProperties).forEach((dateProp) => {
-      const valIndex = dataTypes[dateProp].index;
-      const date = valArray[valIndex];
-      valArray[valIndex] = date.toLocaleDateString();
+const sendSearchResult = (searchToIndex: number) => {
+  if (currentChosenColumns.length) {
+    const rows = searchResults.map((id) => {
+      let valArray = dataDictionary[id].slice(0);
+      let sendValArray = [];
+      for (
+        var chosenColumnIndex = 0;
+        chosenColumnIndex < currentChosenColumns.length;
+        chosenColumnIndex++
+      ) {
+        const chosenColumnInfo = currentChosenColumns[chosenColumnIndex];
+        const dataType = dataTypes[chosenColumnInfo.prop];
+        if (dataType.date)
+          sendValArray.push(
+            dateToString(valArray[dataType.index], chosenColumnInfo.dateFormat)
+          );
+        else sendValArray.push(valArray[dataType.index]);
+      }
+      return sendValArray;
     });
-    return valArray;
+    postMessage({
+      tableData: {
+        rows,
+        headers: currentChosenColumns.map(
+          ({ prop }) => columnHeaders[prop] || prop
+        ),
+        searchToIndex,
+      },
+    });
+  } else postMessage({ tableData: { rows: [], headers: [], searchToIndex } });
+};
+const doesRowCheckCriteria = (row) => {
+  const firstCriterionNotChecked = currentActiveCriteria.find((criterion) => {
+    if (!criterion) return false;
+    const { prop, q } = criterion;
+    const dataType = dataTypes[prop];
+    const propValue = row[dataType.index];
+    if (dataType.string && !propValue.toLowerCase().includes(q.toLowerCase()))
+      return true;
   });
-  postMessage({ tableData: { rows, headers: columns }, toIndex });
+  return !firstCriterionNotChecked;
+};
+const doesQueryCheck = (row) => {
+  for (var columnIndex = 0; columnIndex < row.length; columnIndex++) {
+    const column = row[columnIndex];
+    if (column.toString().toLowerCase().indexOf(currentQuery) > -1) {
+      return true;
+    }
+  }
+  return false;
 };

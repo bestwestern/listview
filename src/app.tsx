@@ -1,20 +1,28 @@
 import { useEffect, useState, useRef } from "preact/hooks";
 import InlineWorker from "./worker.js?worker&inline";
 import { Table } from "./table";
-import { EditColumns } from "./editcolumns";
+import { ColumnSettings } from "./columnsettings";
+import { CriteriaSection } from "./criteria";
 //import "./index.css";
 const worker = new InlineWorker();
 export function App(props) {
-  const { data, url, defaultdateformat = "d.d.yyyy" } = props;
+  const {
+    data,
+    url,
+    defaultdateformat = "d.m.yyyy",
+    customCriteria = [],
+  } = props;
   const currentUrl = new URL(location.href);
-  var col = currentUrl.searchParams.get("columns");
-
-  var kjl = JSON.parse(col);
-  console.log({ kjl });
   const [dataTypes, setDataTypes] = useState({});
-  const [chosenColumns, setChosenColumns] = useState([]);
-  const [columnInfo, setColumnInfo] = useState({});
-  const [editingColumns, setEditingColumns] = useState(true);
+  const [sortedColArray, setsortedColArray] = useState([]);
+  //const [customCriteria, setCustomCriteria] = useState([]);
+  const [chosenColumns, setChosenColumns] = useState(
+    JSON.parse(currentUrl.searchParams.get("columns")) || []
+  );
+  const [criteria, setCriteria] = useState(
+    JSON.parse(currentUrl.searchParams.get("criteria")) || []
+  );
+  const [count, setCount] = useState(0);
   const [query, setQuery] = useState(
     currentUrl.searchParams.get("query") || ""
   );
@@ -30,45 +38,61 @@ export function App(props) {
         })
         .then((res) => {
           worker.postMessage({ data: res });
+          setCount(res.data.length);
         })
         .catch((error) => {
           throw new Error("Network error" + JSON.stringify(error));
         });
     worker.onmessage = (ev) => {
       if (ev.data.tableData) setTableData(ev.data.tableData);
-      if (ev.data.dataTypes) setDataTypes(ev.data.dataTypes);
+      if (ev.data.dataTypes) {
+        setDataTypes(ev.data.dataTypes);
+        setsortedColArray(ev.data.sortedColArray);
+      }
+      if (ev.data.setColumnsTo) {
+        setChosenColumns(ev.data.setColumnsTo);
+      }
     };
     worker.postMessage({ query });
     window.addEventListener("popstate", function () {
       setParamsFromUrl();
-      console.log("location changed!");
     });
   };
   const setParamsFromUrl = () => {
-    console.log("updating params");
+    console.log("urlchange - set params");
     const currentUrl = new URL(location.href);
-    setQuery(currentUrl.searchParams.get("query"));
+    setQuery(currentUrl.searchParams.get("query") || "");
+    const columnQuery = currentUrl.searchParams.get("columns");
+    setChosenColumns(columnQuery ? JSON.parse(columnQuery) : []);
+    const criteraQuery = currentUrl.searchParams.get("criteria");
+    setCriteria(criteraQuery ? JSON.parse(criteraQuery) : []);
+    //setChosenColumns(columnQuery ? JSON.parse(columnQuery) : sortedColArray);
   };
   const updateUrl = () => {
     let newUrl = window.location.origin + "/?";
     if (query.length) newUrl += "&query=" + encodeURIComponent(query);
-    // chosenColumns.forEach(
-    //   (c, index) => (newUrl += "&c" + index + "=" + encodeURIComponent(c))
-    // );
-    if (chosenColumns.length)
-      newUrl += "&columns=" + encodeURIComponent(JSON.stringify(chosenColumns));
+    if (criteria.length)
+      newUrl += "&criteria=" + encodeURIComponent(JSON.stringify(criteria));
+    newUrl += "&columns=" + encodeURIComponent(JSON.stringify(chosenColumns));
     if (location.href !== newUrl) window.history.pushState("", "", newUrl);
-    //if no parameters just use location.href!
   };
   useEffect(() => {
     init();
   }, []);
   useEffect(() => {
-    if (data) worker.postMessage({ data });
+    if (data) {
+      worker.postMessage({ data, defaultdateformat });
+      setCount(data.rows.length);
+    }
   }, [data]);
   useEffect(() => {
     updateUrl();
+    worker.postMessage({ chosenColumns });
   }, [chosenColumns]);
+  useEffect(() => {
+    updateUrl();
+    worker.postMessage({ criteria });
+  }, [criteria]);
   useEffect(() => {
     if (didMount.current) {
       worker.postMessage({ query });
@@ -79,38 +103,24 @@ export function App(props) {
   }, [query]);
   return (
     <div>
-      <p>
-        <input
-          type="text"
-          value={query}
-          onInput={(e) => setQuery(e.target.value)}
-          placeholder="Search"
-        />
-      </p>
-      <pre>{JSON.stringify(dataTypes)}</pre>
-      {dataTypes && (
-        <>
-          <p>
-            <button
-              type="button"
-              onClick={(e) => setEditingColumns(!editingColumns)}
-            >
-              {editingColumns ? "Finish column edit" : "Edit columns"}
-            </button>
-          </p>
-          {editingColumns && (
-            <EditColumns
-              defaultdateformat={defaultdateformat}
-              dataTypes={dataTypes}
-              columnInfo={columnInfo}
-              setColumnInfo={setColumnInfo}
-              chosenColumns={chosenColumns}
-              setChosenColumns={setChosenColumns}
-            />
-          )}
-        </>
-      )}
-      <Table tableData={tableData}></Table>
+      <a href={window.location.origin}>reset</a>
+      <CriteriaSection
+        dataTypes={dataTypes}
+        setQuery={setQuery}
+        query={query}
+        criteria={criteria}
+        setCriteria={setCriteria}
+        customCriteria={customCriteria}
+      />
+      <ColumnSettings
+        defaultdateformat={defaultdateformat}
+        dataTypes={dataTypes}
+        sortedColArray={sortedColArray}
+        chosenColumns={chosenColumns}
+        setChosenColumns={setChosenColumns}
+      />
+
+      <Table tableData={tableData} rowCount={count}></Table>
     </div>
   );
 }

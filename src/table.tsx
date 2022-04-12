@@ -1,23 +1,37 @@
-export function Table({ tableData = { headers: ["t"], rows: [["jkl"]] } }) {
-  const { headers, rows } = tableData;
+import { ProgressBar } from "./progressbar";
+
+export function Table({
+  tableData = { headers: [], rows: [], searchToIndex: 0 },
+  rowCount,
+}) {
+  const { headers, rows, searchToIndex } = tableData;
+  const searchedPercentage = (100 * searchToIndex) / rowCount;
+  //const foundPercentage = (100 * table) / rowCount;
+
   return (
-    <table>
-      <thead>
-        <tr>
-          {headers.map((header) => (
-            <th>{header}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.slice(0, 10).map((rowArray) => (
+    <div>
+      <pre>
+        {JSON.stringify({ rowCount, searchToIndex, rowslength: rows.length })}
+      </pre>
+      <ProgressBar searchedPercentage={searchedPercentage} />
+      <table class="table table-striped ">
+        <thead class="table-dark sticky-top">
           <tr>
-            {rowArray.map((cell) => (
-              <td>{cell}</td>
+            {headers.map((header) => (
+              <th scope="col">{header} </th>
             ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rows.slice(0, 10).map((rowArray) => (
+            <tr scope="row">
+              {rowArray.map((cell) => (
+                <td>{cell}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

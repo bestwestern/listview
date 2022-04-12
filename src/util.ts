@@ -11,5 +11,14 @@ function stringToDate(_date, _format) {
   var formatedDate = new Date(dateItems[yearIndex], month, dateItems[dayIndex]);
   return formatedDate;
 }
+function dateToString(_date: Date, format: string) {
+  const d = _date.getDate();
+  const m = _date.getMonth() + 1;
+  const yyyy = _date.getFullYear();
 
-export { stringToDate };
+  return format
+    .replace("d", d.toString())
+    .replace("m", m.toString())
+    .replace("yyyy", yyyy.toString());
+}
+export { dateToString, stringToDate };
