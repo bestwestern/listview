@@ -1,5 +1,12 @@
 import { stringToDate, dateToString } from "./util";
 import { JSONfn } from "./jsonfn";
+import {
+  min,
+  max,
+  mean,
+  standardDeviation,
+  linearRegression,
+} from "simple-statistics";
 let dataDictionary = {};
 let idsAsSorted = [];
 let dataArray = [];
@@ -16,6 +23,7 @@ let currentActiveCriteria = false;
 let currentCriteria = [];
 let customCriteria = {};
 let dateStringValuesForProps = {};
+let statisticSettings = { a: 1 };
 onmessage = function (e) {
   const {
     data,
@@ -24,7 +32,12 @@ onmessage = function (e) {
     defaultdateformat,
     criteria,
     customCriterion,
+    statSettings,
   } = e.data;
+  if (statSettings) {
+    statisticSettings = statSettings;
+    makeSimpleStat();
+  }
   if (data) {
     analyzeData(data, defaultdateformat);
   }
@@ -49,7 +62,6 @@ onmessage = function (e) {
         searchResults = [];
         searchData(++searchCount);
       }
-      analyseCriteria();
     }
   }
   if (customCriterion) {
@@ -58,12 +70,13 @@ onmessage = function (e) {
   }
 };
 const analyseCriteria = () => {
+  console.log("a");
   let criterionDataArray = [];
   currentCriteria.forEach((criterion) => {
     const { prop, q } = criterion;
     const dataType = dataTypes[prop];
     if (dataType) {
-      if (dataType.string) {
+      if (dataType.colType === "string") {
         let criterionData = {};
         const { index } = dataType;
         for (var i = 0; i < searchResults.length; i++) {
@@ -106,11 +119,13 @@ const analyzeData = (data, defaultdateformat) => {
     const c = dataColumns[colIndex];
     dataTypes[c] = { header: columnHeaders[c] || c };
   }
+  let columnsWithMultipleTypes = {};
   if (dataColumns) {
     columns = dataColumns;
     //data has rows property which is array of arrays. Must have a rowid property
     idIndex = columns.indexOf("rowid");
     dataArray = rows;
+    console.log();
     for (var i = 0; i < dataArray.length; i++) {
       const row = rows[i];
       const rowId = row[idIndex];
@@ -124,7 +139,7 @@ const analyzeData = (data, defaultdateformat) => {
         }
         let colType = typeof val;
         if (colType === "object" && Array.isArray(val)) colType = "array";
-        if (colType === "object" && val instanceof Date) {
+        else if (colType === "object" && val instanceof Date) {
           dateProperties[columnProp] = true;
           if (dateStringValuesForProps[columnProp] === undefined)
             dateStringValuesForProps[columnProp] = {};
@@ -134,21 +149,31 @@ const analyzeData = (data, defaultdateformat) => {
           );
           colType = "date";
         }
-        dataTypes[columnProp][colType] = true;
+        if (dataTypes[columnProp].colType) {
+          if (dataTypes[columnProp].colType !== colType)
+            columnsWithMultipleTypes[columnProp] = [
+              colType,
+              dataTypes[columnProp].colType,
+            ];
+        } else dataTypes[columnProp].colType = colType;
+        //        dataTypes[columnProp][colType] = true;
+
         dataTypes[columnProp].index = colIndex;
       }
       idsAsSorted.push(rowId);
       dataDictionary[rowId] = row;
     }
-    console.log(dateStringValuesForProps);
     let sortedColArray = dataColumns.map((prop) => {
-      if (dataTypes[prop].date) return { prop, dateFormat: defaultdateformat };
+      if (dataTypes[prop].colType === "date")
+        return { prop, dateFormat: defaultdateformat };
       else return { prop };
     });
     postMessage({ dataTypes, sortedColArray });
     if (!currentChosenColumns.length)
       postMessage({ setColumnsTo: sortedColArray });
   }
+  if (Object.keys(columnsWithMultipleTypes).length)
+    postMessage({ columnsWithMultipleTypes });
   if (!currentActiveCriteria)
     currentActiveCriteria = getActiveCriteriaFromArray(currentCriteria);
   searchData(++searchCount);
@@ -165,8 +190,61 @@ const searchData = (currentSearchCount, fromIndex = 0) => {
 
   sendSearchResult(searchToIndex);
   if (searchToIndex < idsAsSorted.length)
-    setTimeout(() => searchData(currentSearchCount, searchToIndex), 10);
-  else analyseCriteria();
+    setTimeout(() => searchData(currentSearchCount, searchToIndex), 50);
+  else {
+    analyseCriteria();
+    //if (Object.keys(statisticSettings).length)
+    makeSimpleStat();
+  }
+};
+const makeSimpleStat = () => {
+  console.log("mak stat");
+  const { lr, s } = statisticSettings;
+  if (!s) return;
+  console.log("yes!");
+  let statData = {
+    headers: ["Property", "Mean", "Min", "Max", "Std dev."],
+    rows: [],
+  };
+  let propValues = {};
+  for (var prop in dataTypes) {
+    const dt = dataTypes[prop]; //datatype
+    if (dt)
+      if (dt.colType === "number") {
+        propValues[prop] = [];
+        for (var i = 0; i < searchResults.length; i++)
+          propValues[prop].push(dataDictionary[searchResults[i]][dt.index]);
+        console.log(propValues);
+        if (propValues[prop].length)
+          statData.rows.push([
+            dt.header,
+            mean(propValues[prop]).toFixed(2),
+            min(propValues[prop]),
+            max(propValues[prop]),
+            standardDeviation(propValues[prop]).toFixed(2),
+          ]);
+      }
+  }
+  if (statisticSettings.lr) {
+    const explainingProperty = Object.keys(statisticSettings.lr)[0];
+    const dependantProperty = statisticSettings.lr[explainingProperty];
+    const explValues = propValues[explainingProperty];
+    const depValues = propValues[dependantProperty];
+    console.log({
+      explainingProperty,
+      propValues,
+      statisticSettings,
+      depValues,
+      explValues,
+    });
+    const dataPoints = depValues.map((dep, index) => [explValues[index], dep]);
+    console.log(dataPoints);
+    statData.lr = linearRegression(dataPoints);
+    statData.lr.m = statData.lr.m.toFixed(2);
+    statData.lr.b = statData.lr.b.toFixed(2);
+    console.log({ statData });
+  }
+  postMessage({ statData });
 };
 const sendSearchResult = (searchToIndex: number) => {
   if (currentChosenColumns.length) {
@@ -180,7 +258,7 @@ const sendSearchResult = (searchToIndex: number) => {
       ) {
         const chosenColumnInfo = currentChosenColumns[chosenColumnIndex];
         const dataType = dataTypes[chosenColumnInfo.prop];
-        if (dataType.date)
+        if (dataType.colType === "date")
           sendValArray.push(
             dateToString(valArray[dataType.index], chosenColumnInfo.dateFormat)
           );
@@ -206,7 +284,10 @@ const doesRowCheckCriteria = (row) => {
     const dataType = dataTypes[prop];
     if (dataType) {
       const propValue = row[dataType.index];
-      if (dataType.string && !propValue.toLowerCase().includes(q.toLowerCase()))
+      if (
+        dataType.colType === "string" &&
+        !propValue.toLowerCase().includes(q.toLowerCase())
+      )
         return true;
     }
     if (customCriteria[prop]) {
@@ -219,16 +300,18 @@ const doesQueryCheck = (row) => {
   for (var columnIndex = 0; columnIndex < row.length; columnIndex++) {
     const columnProp = columns[columnIndex];
     if (!columnProp) return false;
-    if (dataTypes[columnProp].date)
-      return (
+    if (dataTypes[columnProp].colType === "date") {
+      if (
         dateStringValuesForProps[columnProp][row[idIndex]].indexOf(
           currentQuery
         ) > -1
-      );
-
-    const column = row[columnIndex];
-    if (column.toString().toLowerCase().indexOf(currentQuery) > -1) {
-      return true;
+      )
+        return true;
+    } else {
+      const column = row[columnIndex];
+      if (column.toString().toLowerCase().indexOf(currentQuery) > -1) {
+        return true;
+      }
     }
   }
   return false;
