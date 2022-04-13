@@ -7,6 +7,7 @@ export function CriteriaSection({
   criteria,
   setCriteria,
   customCriteria,
+  criterionDataArray,
 }) {
   const [addingCriteria, setAddingCriteria] = useState(true);
   const [addingCriteriaQuery, setAddingCriteriaQuery] = useState("");
@@ -16,16 +17,21 @@ export function CriteriaSection({
   };
   const getCriteriaElement = (prop, index) => {
     const criterion = criteria[index];
+    const criterionData = criterionDataArray[index] || [];
     const updateCriterion = (value) =>
       setCriteria(criteria.map((c, i) => (i === index ? value : c)));
     if (Object.keys(dataTypes).length > 0) {
       if (dataTypes[prop]) {
         if (dataTypes[prop].string)
           return (
-            <CriterionText
-              criterion={criterion}
-              updateCriterion={updateCriterion}
-            ></CriterionText>
+            <>
+              <span>{dataTypes[prop].header}</span>
+              <CriterionText
+                criterion={criterion}
+                updateCriterion={updateCriterion}
+                criterionData={criterionData}
+              ></CriterionText>
+            </>
           );
       } else {
         let Crit = customCriteria.find((cc) => cc.shortName === prop);
@@ -57,7 +63,6 @@ export function CriteriaSection({
           placeholder="Search"
         />
       </p>
-      <pre>{JSON.stringify(criteria, null, 2)}</pre>
       {criteria.map((criterium, index) => {
         const { prop } = criterium;
         return (
@@ -71,6 +76,7 @@ export function CriteriaSection({
             >
               Remove
             </button>
+            <hr></hr>
           </div>
         );
       })}
@@ -79,7 +85,7 @@ export function CriteriaSection({
           type="button"
           onClick={(e) => setAddingCriteria(!addingCriteria)}
         >
-          {addingCriteria ? "Finish criteria add" : "Add critera"}
+          {addingCriteria ? "Finish criteria add" : "Add criteria"}
         </button>
       </p>
       {addingCriteria && (

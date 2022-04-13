@@ -15,6 +15,7 @@ let columnHeaders = {};
 let currentActiveCriteria = false;
 let currentCriteria = [];
 let customCriteria = {};
+let dateStringValuesForProps = {};
 onmessage = function (e) {
   const {
     data,
@@ -25,7 +26,6 @@ onmessage = function (e) {
     customCriterion,
   } = e.data;
   if (data) {
-    console.log(data);
     analyzeData(data, defaultdateformat);
   }
   if (query !== undefined && query !== currentQuery) {
@@ -38,9 +38,8 @@ onmessage = function (e) {
     sendSearchResult(dataArray.length);
   }
   if (criteria) {
-    if (!Object.keys(dataTypes).length) {
-      currentCriteria = criteria;
-    } else {
+    currentCriteria = criteria;
+    if (Object.keys(dataTypes).length) {
       let newActiveCriteria = getActiveCriteriaFromArray(criteria);
       if (
         JSON.stringify(currentActiveCriteria) !==
@@ -50,12 +49,39 @@ onmessage = function (e) {
         searchResults = [];
         searchData(++searchCount);
       }
+      analyseCriteria();
     }
   }
   if (customCriterion) {
     const { shortName, fctString } = customCriterion;
     customCriteria[shortName] = JSONfn.parse(fctString);
   }
+};
+const analyseCriteria = () => {
+  let criterionDataArray = [];
+  currentCriteria.forEach((criterion) => {
+    const { prop, q } = criterion;
+    const dataType = dataTypes[prop];
+    if (dataType) {
+      if (dataType.string) {
+        let criterionData = {};
+        const { index } = dataType;
+        for (var i = 0; i < searchResults.length; i++) {
+          const rowVal = dataDictionary[searchResults[i]][index];
+          criterionData[rowVal] = criterionData[rowVal]
+            ? criterionData[rowVal] + 1
+            : 1;
+        }
+
+        criterionDataArray.push(
+          Object.entries(criterionData)
+            .sort((a, b) => b[1] - a[1])
+            .map((arr) => ({ val: arr[0], count: arr[1] }))
+        );
+      }
+    } else criterionDataArray.push(null);
+  });
+  postMessage({ criterionDataArray });
 };
 const getActiveCriteriaFromArray = (criteriaArray) => {
   return criteriaArray.filter((criterion) => {
@@ -90,7 +116,8 @@ const analyzeData = (data, defaultdateformat) => {
       const rowId = row[idIndex];
       for (var colIndex = 0; colIndex < colCount; colIndex++) {
         let val = row[colIndex];
-        const dateFormat = dateProps[dataColumns[colIndex]];
+        const columnProp = dataColumns[colIndex];
+        const dateFormat = dateProps[columnProp];
         if (dateFormat) {
           val = stringToDate(val, dateFormat);
           row[colIndex] = val;
@@ -98,15 +125,22 @@ const analyzeData = (data, defaultdateformat) => {
         let colType = typeof val;
         if (colType === "object" && Array.isArray(val)) colType = "array";
         if (colType === "object" && val instanceof Date) {
-          dateProperties[dataColumns[colIndex]] = true;
+          dateProperties[columnProp] = true;
+          if (dateStringValuesForProps[columnProp] === undefined)
+            dateStringValuesForProps[columnProp] = {};
+          dateStringValuesForProps[columnProp][rowId] = dateToString(
+            val,
+            "ddmmyyyy"
+          );
           colType = "date";
         }
-        dataTypes[dataColumns[colIndex]][colType] = true;
-        dataTypes[dataColumns[colIndex]].index = colIndex;
+        dataTypes[columnProp][colType] = true;
+        dataTypes[columnProp].index = colIndex;
       }
       idsAsSorted.push(rowId);
       dataDictionary[rowId] = row;
     }
+    console.log(dateStringValuesForProps);
     let sortedColArray = dataColumns.map((prop) => {
       if (dataTypes[prop].date) return { prop, dateFormat: defaultdateformat };
       else return { prop };
@@ -131,7 +165,8 @@ const searchData = (currentSearchCount, fromIndex = 0) => {
 
   sendSearchResult(searchToIndex);
   if (searchToIndex < idsAsSorted.length)
-    setTimeout(() => searchData(currentSearchCount, searchToIndex), 100);
+    setTimeout(() => searchData(currentSearchCount, searchToIndex), 10);
+  else analyseCriteria();
 };
 const sendSearchResult = (searchToIndex: number) => {
   if (currentChosenColumns.length) {
@@ -182,6 +217,15 @@ const doesRowCheckCriteria = (row) => {
 };
 const doesQueryCheck = (row) => {
   for (var columnIndex = 0; columnIndex < row.length; columnIndex++) {
+    const columnProp = columns[columnIndex];
+    if (!columnProp) return false;
+    if (dataTypes[columnProp].date)
+      return (
+        dateStringValuesForProps[columnProp][row[idIndex]].indexOf(
+          currentQuery
+        ) > -1
+      );
+
     const column = row[columnIndex];
     if (column.toString().toLowerCase().indexOf(currentQuery) > -1) {
       return true;

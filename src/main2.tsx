@@ -7,7 +7,7 @@ var el = document.getElementsByTagName("list-view");
 // url="https://global-power-plants.datasettes.com/global-power-plants/global-power-plants.json"
 // url="https://covid-19.datasettes.com/covid/ny_times_us_counties.json?_size=1000&county=Greene&state=Mississippi"
 
-setTimeout(setData, 5);
+setTimeout(setData, 205);
 function setData() {
   (el[0].customCriteria = [
     {

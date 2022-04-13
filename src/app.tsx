@@ -23,6 +23,7 @@ export function App(props) {
   const [criteria, setCriteria] = useState(
     JSON.parse(currentUrl.searchParams.get("criteria")) || []
   );
+  const [criterionDataArray, setCriterionDataArray] = useState([]);
   const [count, setCount] = useState(0);
   const [query, setQuery] = useState(
     currentUrl.searchParams.get("query") || ""
@@ -52,6 +53,9 @@ export function App(props) {
       }
       if (ev.data.setColumnsTo) {
         setChosenColumns(ev.data.setColumnsTo);
+      }
+      if (ev.data.criterionDataArray) {
+        setCriterionDataArray(ev.data.criterionDataArray);
       }
     };
     worker.postMessage({ query });
@@ -91,6 +95,7 @@ export function App(props) {
   }, [chosenColumns]);
   useEffect(() => {
     updateUrl();
+    setCriterionDataArray([]);
     worker.postMessage({ criteria });
   }, [criteria]);
   useEffect(() => {
@@ -117,6 +122,7 @@ export function App(props) {
         query={query}
         criteria={criteria}
         setCriteria={setCriteria}
+        criterionDataArray={criterionDataArray}
         customCriteria={customCriteria}
       />
       <ColumnSettings
