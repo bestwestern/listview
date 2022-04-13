@@ -1,23 +1,27 @@
-import { useState } from "preact/hooks";
+import { useState, useEffect } from "preact/hooks";
 export function Statistics({
   statData,
   dataTypes,
   statisticsSettings,
-  SetStatisticsSettings,
+  setStatisticsSettings,
 }) {
+  const { lr, s } = statisticsSettings;
+  useEffect(() => {
+    if (lr) setExplainingProperty(Object.keys(lr)[0]);
+    else setExplainingProperty(""); //Go back after chosen linear regression parameters=>clear explaining variable
+  }, [statisticsSettings]);
   const { headers = [], rows = [] } = statData;
   const [explainingProperty, setExplainingProperty] = useState("");
   const numberColumns = Object.entries(dataTypes)
     .filter(([prop, dataType]) => dataType.colType === "number")
     .map(([prop]) => prop);
-  const { lr, s } = statisticsSettings;
   return (
     <div>
       <p>
         <button
           type="button"
           onClick={(e) =>
-            SetStatisticsSettings({ ...statisticsSettings, s: 1 - s })
+            setStatisticsSettings({ ...statisticsSettings, s: 1 - s })
           }
         >
           {s ? "Hide statistics" : "Show statistics"}
@@ -59,14 +63,25 @@ export function Statistics({
                       <>
                         <strong>{" " + Object.values(lr)[0] + ":"}</strong>
                         {statData.lr && (
-                          <p>
-                            {explainingProperty +
-                              "*" +
-                              statData.lr.m +
-                              (statData.lr.b < 0
-                                ? " " + statData.lr.b
-                                : " + " + statData.lr.b)}
-                          </p>
+                          <>
+                            <p>
+                              {explainingProperty +
+                                "*" +
+                                statData.lr.m +
+                                (statData.lr.b < 0
+                                  ? " " + statData.lr.b
+                                  : " + " + statData.lr.b)}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                setExplainingProperty(null);
+                                setStatisticsSettings({ s: 1 });
+                              }}
+                            >
+                              Reset
+                            </button>
+                          </>
                         )}
                       </>
                     ) : (
@@ -76,7 +91,7 @@ export function Statistics({
                           <button
                             type="button"
                             onClick={(e) =>
-                              SetStatisticsSettings({
+                              setStatisticsSettings({
                                 ...statisticsSettings,
                                 lr: { [explainingProperty]: prop },
                               })

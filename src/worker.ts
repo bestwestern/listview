@@ -207,44 +207,41 @@ const makeSimpleStat = () => {
     rows: [],
   };
   let propValues = {};
-  for (var prop in dataTypes) {
-    const dt = dataTypes[prop]; //datatype
-    if (dt)
-      if (dt.colType === "number") {
-        propValues[prop] = [];
-        for (var i = 0; i < searchResults.length; i++)
-          propValues[prop].push(dataDictionary[searchResults[i]][dt.index]);
-        console.log(propValues);
-        if (propValues[prop].length)
-          statData.rows.push([
-            dt.header,
-            mean(propValues[prop]).toFixed(2),
-            min(propValues[prop]),
-            max(propValues[prop]),
-            standardDeviation(propValues[prop]).toFixed(2),
-          ]);
-      }
+  if (Object.keys(dataTypes).length) {
+    for (var prop in dataTypes) {
+      const dt = dataTypes[prop]; //datatype
+      if (dt)
+        if (dt.colType === "number") {
+          propValues[prop] = [];
+          for (var i = 0; i < searchResults.length; i++)
+            propValues[prop].push(dataDictionary[searchResults[i]][dt.index]);
+          console.log(propValues);
+          if (propValues[prop].length)
+            statData.rows.push([
+              dt.header,
+              mean(propValues[prop]).toFixed(2),
+              min(propValues[prop]),
+              max(propValues[prop]),
+              standardDeviation(propValues[prop]).toFixed(2),
+            ]);
+        }
+    }
+    if (statisticSettings.lr) {
+      const explainingProperty = Object.keys(statisticSettings.lr)[0];
+      const dependantProperty = statisticSettings.lr[explainingProperty];
+      const explValues = propValues[explainingProperty];
+      const depValues = propValues[dependantProperty];
+      console.log({ explValues, depValues });
+      const dataPoints = depValues.map((dep, index) => [
+        explValues[index],
+        dep,
+      ]);
+      statData.lr = linearRegression(dataPoints);
+      statData.lr.m = statData.lr.m.toFixed(2);
+      statData.lr.b = statData.lr.b.toFixed(2);
+    }
+    postMessage({ statData });
   }
-  if (statisticSettings.lr) {
-    const explainingProperty = Object.keys(statisticSettings.lr)[0];
-    const dependantProperty = statisticSettings.lr[explainingProperty];
-    const explValues = propValues[explainingProperty];
-    const depValues = propValues[dependantProperty];
-    console.log({
-      explainingProperty,
-      propValues,
-      statisticSettings,
-      depValues,
-      explValues,
-    });
-    const dataPoints = depValues.map((dep, index) => [explValues[index], dep]);
-    console.log(dataPoints);
-    statData.lr = linearRegression(dataPoints);
-    statData.lr.m = statData.lr.m.toFixed(2);
-    statData.lr.b = statData.lr.b.toFixed(2);
-    console.log({ statData });
-  }
-  postMessage({ statData });
 };
 const sendSearchResult = (searchToIndex: number) => {
   if (currentChosenColumns.length) {
