@@ -15,7 +15,7 @@ export function ColumnSettings({
   };
   const addColumnClick = (prop) => {
     const colType = dataTypes[prop];
-    if (colType.date) {
+    if (colType.colType === "date") {
       setAddingProp({ prop, dateFormat: defaultdateformat });
       setTimeout(() => addingInputRef.current.focus(), 10);
     } else {
@@ -30,7 +30,7 @@ export function ColumnSettings({
   const addableColumns = sortedColArray.filter(
     ({ prop }) =>
       !chosenColumns.find((chosenCol) => chosenCol.prop === prop) ||
-      dataTypes[prop].date
+      dataTypes[prop].colType === "date" //dates and arrays can be added multiple times
   );
   return (
     <div>

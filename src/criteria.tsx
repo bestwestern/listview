@@ -1,4 +1,4 @@
-import { useState, useRef } from "preact/hooks";
+import { useState } from "preact/hooks";
 import { CriterionText } from "./criteriontext";
 export function CriteriaSection({
   dataTypes,
@@ -22,7 +22,7 @@ export function CriteriaSection({
       setCriteria(criteria.map((c, i) => (i === index ? value : c)));
     if (Object.keys(dataTypes).length > 0) {
       if (dataTypes[prop]) {
-        if (dataTypes[prop].string)
+        if (dataTypes[prop].colType === "string")
           return (
             <>
               <span>{dataTypes[prop].header}</span>
@@ -56,6 +56,7 @@ export function CriteriaSection({
   return (
     <div>
       <p>
+        <span>Search all columns</span>
         <input
           type="text"
           value={query}
@@ -63,6 +64,7 @@ export function CriteriaSection({
           placeholder="Search"
         />
       </p>
+      <hr></hr>
       {criteria.map((criterium, index) => {
         const { prop } = criterium;
         return (
@@ -89,7 +91,8 @@ export function CriteriaSection({
         </button>
       </p>
       {addingCriteria && (
-        <div>
+        <>
+          <span>Search property for criterion</span>{" "}
           <input
             type="text"
             value={addingCriteriaQuery}
@@ -121,7 +124,7 @@ export function CriteriaSection({
             );
           })}
           <p />
-        </div>
+        </>
       )}
     </div>
   );

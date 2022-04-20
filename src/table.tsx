@@ -11,7 +11,8 @@ export function Table({
   return (
     <div>
       <pre>
-        {JSON.stringify({ rowCount, searchToIndex, rowslength: rows.length })}
+        {1 &&
+          JSON.stringify({ rowCount, searchToIndex, rowslength: rows.length })}
       </pre>
       <ProgressBar searchedPercentage={searchedPercentage} />
       <table class="table table-striped ">

@@ -3,6 +3,7 @@ import InlineWorker from "./worker.js?worker&inline";
 import { Table } from "./table";
 import { ColumnSettings } from "./columnsettings";
 import { CriteriaSection } from "./criteria";
+import { Statistics } from "./statistics";
 import { JSONfn } from "./jsonfn";
 //import "./index.css";
 const worker = new InlineWorker();
@@ -10,11 +11,15 @@ export function App(props) {
   const {
     data,
     url,
-    defaultdateformat = "d.m.yyyy",
+    defaultdateformat = "dd.mm.yyyy",
     customCriteria = [],
   } = props;
   const currentUrl = new URL(location.href);
   const [dataTypes, setDataTypes] = useState({});
+  const [statisticsSettings, setStatisticsSettings] = useState(
+    JSON.parse(currentUrl.searchParams.get("stat")) || { s: 0 }
+  ); //showing lr:linear regression
+  const [statData, setStatData] = useState({});
   const [sortedColArray, setsortedColArray] = useState([]);
   //const [customCriteria, setCustomCriteria] = useState([]);
   const [chosenColumns, setChosenColumns] = useState(
@@ -31,38 +36,10 @@ export function App(props) {
   const [tableData, setTableData] = useState({ headers: [], rows: [] });
   const timerRef = useRef(0);
   const didMount = useRef(false);
-  const init = () => {
-    if (url)
-      fetch(url)
-        .then((response) => {
-          if (!response.ok) throw new Error("Network error");
-          return response.json();
-        })
-        .then((res) => {
-          worker.postMessage({ data: res });
-          setCount(res.data.length);
-        })
-        .catch((error) => {
-          throw new Error("Network error" + JSON.stringify(error));
-        });
-    worker.onmessage = (ev) => {
-      if (ev.data.tableData) setTableData(ev.data.tableData);
-      if (ev.data.dataTypes) {
-        setDataTypes(ev.data.dataTypes);
-        setsortedColArray(ev.data.sortedColArray);
-      }
-      if (ev.data.setColumnsTo) {
-        setChosenColumns(ev.data.setColumnsTo);
-      }
-      if (ev.data.criterionDataArray) {
-        setCriterionDataArray(ev.data.criterionDataArray);
-      }
-    };
-    worker.postMessage({ query });
-    window.addEventListener("popstate", function () {
-      setParamsFromUrl();
-    });
-  };
+  worker.postMessage({ query });
+  window.addEventListener("popstate", function () {
+    setParamsFromUrl();
+  });
   const setParamsFromUrl = () => {
     const currentUrl = new URL(location.href);
     setQuery(currentUrl.searchParams.get("query") || "");
@@ -70,17 +47,62 @@ export function App(props) {
     setChosenColumns(columnQuery ? JSON.parse(columnQuery) : []);
     const criteraQuery = currentUrl.searchParams.get("criteria");
     setCriteria(criteraQuery ? JSON.parse(criteraQuery) : []);
+    const statQuery = currentUrl.searchParams.get("stat");
+    setStatisticsSettings(statQuery ? JSON.parse(statQuery) : {});
     //setChosenColumns(columnQuery ? JSON.parse(columnQuery) : sortedColArray);
   };
   const updateUrl = () => {
     let newUrl = window.location.origin + "/?";
+    if (statisticsSettings.s)
+      newUrl +=
+        "&stat=" + encodeURIComponent(JSON.stringify(statisticsSettings));
     if (query.length) newUrl += "&query=" + encodeURIComponent(query);
     if (criteria.length)
       newUrl += "&criteria=" + encodeURIComponent(JSON.stringify(criteria));
+
     newUrl += "&columns=" + encodeURIComponent(JSON.stringify(chosenColumns));
+
     if (location.href !== newUrl) window.history.pushState("", "", newUrl);
   };
   useEffect(() => {
+    const init = () => {
+      if (url)
+        fetch(url)
+          .then((response) => {
+            if (!response.ok) throw new Error("Network error");
+            return response.json();
+          })
+          .then((res) => {
+            worker.postMessage({ data: res });
+            setCount(res.data.length);
+          })
+          .catch((error) => {
+            throw new Error("Network error" + JSON.stringify(error));
+          });
+      worker.onmessage = (ev) => {
+        if (ev.data.statData) setStatData(ev.data.statData);
+        if (ev.data.tableData) setTableData(ev.data.tableData);
+        if (ev.data.dataTypes) {
+          setDataTypes(ev.data.dataTypes);
+          setsortedColArray(ev.data.sortedColArray);
+        }
+        if (ev.data.setColumnsTo) {
+          setChosenColumns(ev.data.setColumnsTo);
+        }
+        if (ev.data.criterionDataArray) {
+          setCriterionDataArray(ev.data.criterionDataArray);
+        }
+        if (ev.data.columnsWithMultipleTypes)
+          Object.keys(ev.data.columnsWithMultipleTypes).forEach((prop) =>
+            alert(
+              prop +
+                " has multiple datatypes - not allowed (" +
+                ev.data.columnsWithMultipleTypes[prop].join(" and ") +
+                ")"
+            )
+          );
+      };
+    };
     init();
   }, []);
   useEffect(() => {
@@ -95,7 +117,6 @@ export function App(props) {
   }, [chosenColumns]);
   useEffect(() => {
     updateUrl();
-    setCriterionDataArray([]);
     worker.postMessage({ criteria });
   }, [criteria]);
   useEffect(() => {
@@ -106,6 +127,12 @@ export function App(props) {
     );
   }, [customCriteria]);
   useEffect(() => {
+    updateUrl();
+    worker.postMessage({
+      statSettings: statisticsSettings,
+    });
+  }, [statisticsSettings]);
+  useEffect(() => {
     if (didMount.current) {
       worker.postMessage({ query });
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -113,6 +140,7 @@ export function App(props) {
     }
     didMount.current = true;
   }, [query]);
+  console.log({ statisticsSettings });
   return (
     <div>
       <a href={window.location.origin}>reset</a>
@@ -125,6 +153,7 @@ export function App(props) {
         criterionDataArray={criterionDataArray}
         customCriteria={customCriteria}
       />
+      <hr />
       <ColumnSettings
         defaultdateformat={defaultdateformat}
         dataTypes={dataTypes}
@@ -132,7 +161,13 @@ export function App(props) {
         chosenColumns={chosenColumns}
         setChosenColumns={setChosenColumns}
       />
-
+      <hr />
+      <Statistics
+        statisticsSettings={statisticsSettings}
+        setStatisticsSettings={setStatisticsSettings}
+        statData={statData}
+        dataTypes={dataTypes}
+      ></Statistics>
       <Table tableData={tableData} rowCount={count}></Table>
     </div>
   );
