@@ -9,7 +9,7 @@ export function CriteriaSection({
   customCriteria,
   criterionDataArray,
 }) {
-  const [addingCriteria, setAddingCriteria] = useState(true);
+  const [addingCriteria, setAddingCriteria] = useState(false);
   const [addingCriteriaQuery, setAddingCriteriaQuery] = useState("");
   const addCriteria = (prop, isCustom) => {
     if (isCustom) setCriteria([...criteria, { prop }]);
