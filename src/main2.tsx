@@ -36,7 +36,8 @@ function setData() {
       "fips",
       "cases",
       "deaths",
-      { arrprop: ["doctors", "nurses"] },
+      { symptoms_age: ["symptom", "age"] },
+      "primarysymptons",
     ],
     dateProps: {
       date: "yyyy-mm-dd",
@@ -1333,12 +1334,35 @@ function setData() {
     allow_execute_sql: true,
     query_ms: 587.6394920001076,
   };
-  const createRandomIntArray = () => {
-    const nurses = 10 + Math.floor(Math.random() * 15);
-    const doctors = 1 + Math.floor(Math.random() * 5);
+  const createArrayData = () => {
+    const arrSize = Math.floor(Math.random() * 5);
+    let arr = [];
+    for (var i = 0; i < arrSize; i++) {
+      arr.push([
+        possibleSymptoms[Math.floor(Math.random() * possibleSymptoms.length)],
+        Math.floor(Math.random() * 70 + 5),
+      ]);
+    }
+
+    return arr;
   };
+  const possibleSymptoms = [
+    "Aching body",
+    "Shivering",
+    "Loss of sense of smell",
+    "Cough",
+    "Shortness of breath",
+    "Exhaustion",
+    "Headeach",
+    "Runny nose",
+    "Diarrhea",
+  ];
   data.rows.forEach((row) => {
-    row.push;
+    row.push(createArrayData());
+    row.push([
+      possibleSymptoms[Math.floor(Math.random() * possibleSymptoms.length)],
+      possibleSymptoms[Math.floor(Math.random() * possibleSymptoms.length)],
+    ]);
   });
   el[0].data = data;
 }

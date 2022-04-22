@@ -70,7 +70,6 @@ onmessage = function (e) {
   }
 };
 const analyseCriteria = () => {
-  console.log("a");
   let criterionDataArray = [];
   currentCriteria.forEach((criterion) => {
     const { prop, q } = criterion;
@@ -107,6 +106,48 @@ const getActiveCriteriaFromArray = (criteriaArray) => {
     return true;
   });
 };
+const createHeaders = (dataColumns, indecies = []) => {
+  let currentDataColumns = dataColumns;
+  for (var i = 0; i < indecies.length; i++)
+    currentDataColumns = Object.values(currentDataColumns[indecies[i]])[0];
+  let newDataTypeObject = {};
+  for (var colIndex = 0; colIndex < currentDataColumns.length; colIndex++) {
+    const c = currentDataColumns[colIndex];
+    if (typeof c === "string") {
+      newDataTypeObject[c] = {
+        header: currentDataColumns[c] || c,
+        index: colIndex,
+      };
+    } else {
+      const prop = Object.keys(c)[0];
+      newDataTypeObject[prop] = {
+        header: prop,
+      };
+      newDataTypeObject[prop].dataTypes = createHeaders(dataColumns, [
+        ...indecies,
+        colIndex,
+      ]);
+    }
+  }
+  return newDataTypeObject;
+};
+
+const addDataTypes = (prop) => {
+  const dataType = dataTypes[prop];
+  console.log({ dataType, prop });
+  const propIndex = dataType.index;
+  for (var rowIndex = 0; rowIndex < dataArray.length; rowIndex++) {
+    const propValue = dataArray[rowIndex][propIndex];
+    let colType = typeof propValue;
+    if (colType === "object" && Array.isArray(propValue)) colType = "array";
+    else if (colType === "object" && propValue instanceof Date) {
+      colType = "date";
+    }
+    if (dataTypes[prop].colType != colType) console.log({ propValue, prop });
+    dataTypes[prop].colType = colType;
+  }
+};
+
 const analyzeData = (data, defaultdateformat) => {
   const { rows, dateProps } = data;
   columnHeaders = data.columnHeaders || {};
@@ -114,19 +155,23 @@ const analyzeData = (data, defaultdateformat) => {
   const colCount = dataColumns.length;
   dataTypes = {};
   dateProperties = {};
-  for (var colIndex = 0; colIndex < colCount; colIndex++) {
-    //columnPropsearchToIndex[dataColumns[colIndex]] = colIndex;
-    const c = dataColumns[colIndex];
-    dataTypes[c] = { header: columnHeaders[c] || c };
-  }
+  // for (var colIndex = 0; colIndex < colCount; colIndex++) {
+  //   //columnPropsearchToIndex[dataColumns[colIndex]] = colIndex;
+  //   const c = dataColumns[colIndex];
+  //   if (typeof c === "string") dataTypes[c] = { header: columnHeaders[c] || c };
+  // }
   let columnsWithMultipleTypes = {};
   if (dataColumns) {
     columns = dataColumns;
+    dataTypes = createHeaders(dataColumns);
     //data has rows property which is array of arrays. Must have a rowid property
     idIndex = columns.indexOf("rowid");
     dataArray = rows;
-    console.log();
+    console.log(JSON.stringify(dataTypes));
+    Object.keys(dataTypes).forEach(addDataTypes);
+    console.log(JSON.stringify(dataTypes));
     for (var i = 0; i < dataArray.length; i++) {
+      break;
       const row = rows[i];
       const rowId = row[idIndex];
       for (var colIndex = 0; colIndex < colCount; colIndex++) {
@@ -149,22 +194,22 @@ const analyzeData = (data, defaultdateformat) => {
           );
           colType = "date";
         }
-        if (dataTypes[columnProp].colType) {
-          if (dataTypes[columnProp].colType !== colType)
-            columnsWithMultipleTypes[columnProp] = [
-              colType,
-              dataTypes[columnProp].colType,
-            ];
-        } else dataTypes[columnProp].colType = colType;
+        if (typeof columnProp === "string")
+          if (dataTypes[columnProp].colType) {
+            dataTypes[columnProp].index = colIndex;
+            if (dataTypes[columnProp].colType !== colType)
+              columnsWithMultipleTypes[columnProp] = [
+                colType,
+                dataTypes[columnProp].colType,
+              ];
+          } else dataTypes[columnProp].colType = colType;
         //        dataTypes[columnProp][colType] = true;
-
-        dataTypes[columnProp].index = colIndex;
       }
       idsAsSorted.push(rowId);
       dataDictionary[rowId] = row;
     }
     let sortedColArray = dataColumns.map((prop) => {
-      if (dataTypes[prop].colType === "date")
+      if (dataTypes[prop] && dataTypes[prop].colType === "date")
         return { prop, dateFormat: defaultdateformat };
       else return { prop };
     });
@@ -255,11 +300,15 @@ const sendSearchResult = (searchToIndex: number) => {
       ) {
         const chosenColumnInfo = currentChosenColumns[chosenColumnIndex];
         const dataType = dataTypes[chosenColumnInfo.prop];
-        if (dataType.colType === "date")
-          sendValArray.push(
-            dateToString(valArray[dataType.index], chosenColumnInfo.dateFormat)
-          );
-        else sendValArray.push(valArray[dataType.index]);
+        if (dataType && dataType.colType)
+          if (dataType.colType === "date")
+            sendValArray.push(
+              dateToString(
+                valArray[dataType.index],
+                chosenColumnInfo.dateFormat
+              )
+            );
+          else sendValArray.push(valArray[dataType.index]);
       }
       return sendValArray;
     });

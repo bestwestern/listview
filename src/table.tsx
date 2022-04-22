@@ -18,13 +18,18 @@ export function Table({
       <table class="table table-striped ">
         <thead class="table-dark sticky-top">
           <tr>
-            {headers.map((header) => (
-              <th scope="col">{header} </th>
-            ))}
+            {headers
+              .filter((header) => {
+                return typeof header === "string";
+                return true;
+              })
+              .map((header) => (
+                <th scope="col">{header} </th>
+              ))}
           </tr>
         </thead>
         <tbody>
-          {rows.slice(0, 10).map((rowArray) => (
+          {rows.slice(0, 100).map((rowArray) => (
             <tr scope="row">
               {rowArray.map((cell) => (
                 <td>{cell}</td>
