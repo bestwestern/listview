@@ -36,7 +36,13 @@ function setData() {
       "fips",
       "cases",
       "deaths",
-      { symptoms_age: ["symptom", "age"] },
+      {
+        symptoms_age: [
+          "symptom",
+          "age",
+          // { family: ["Relation", "Age"] }
+        ],
+      },
       "primarysymptons",
     ],
     dateProps: {
@@ -1341,11 +1347,21 @@ function setData() {
       arr.push([
         possibleSymptoms[Math.floor(Math.random() * possibleSymptoms.length)],
         Math.floor(Math.random() * 70 + 5),
+        // possibleFamilyArrays[
+        //   Math.floor(Math.random() * possibleFamilyArrays.length)
+        // ],
       ]);
     }
 
     return arr;
   };
+  const possibleFamilyArrays = [
+    [],
+    // ["Father", 50],
+    // ["Father", 40, "Mother", 38],
+    // ["Father", 40, "Mother", 38, "Sister", 18],
+    // ["Sister", 28],
+  ];
   const possibleSymptoms = [
     "Aching body",
     "Shivering",
@@ -1364,5 +1380,6 @@ function setData() {
       possibleSymptoms[Math.floor(Math.random() * possibleSymptoms.length)],
     ]);
   });
+  console.log(data.rows.slice(0, 5));
   el[0].data = data;
 }

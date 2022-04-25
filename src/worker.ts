@@ -121,6 +121,7 @@ const createHeaders = (dataColumns, indecies = []) => {
     } else {
       const prop = Object.keys(c)[0];
       newDataTypeObject[prop] = {
+        index: colIndex,
         header: prop,
       };
       newDataTypeObject[prop].dataTypes = createHeaders(dataColumns, [
@@ -132,20 +133,65 @@ const createHeaders = (dataColumns, indecies = []) => {
   return newDataTypeObject;
 };
 
-const addDataTypes = (prop) => {
-  const dataType = dataTypes[prop];
-  console.log({ dataType, prop });
+const addDataTypes = (prop, dataType, indecies = []) => {
+  if (indecies.length)
+    console.log({ prop, dt: JSON.stringify(dataType), indecies });
+  // let dataTypeLeveled = dataTypes;
+  //   dataTypeLeveled = dataTypeLeveled[subProps[subPropsIndex]];
+  // let dataType = dataTypeLeveled[prop];
   const propIndex = dataType.index;
-  for (var rowIndex = 0; rowIndex < dataArray.length; rowIndex++) {
-    const propValue = dataArray[rowIndex][propIndex];
-    let colType = typeof propValue;
-    if (colType === "object" && Array.isArray(propValue)) colType = "array";
-    else if (colType === "object" && propValue instanceof Date) {
-      colType = "date";
+  if (dataType.dataTypes) {
+    console.log({ prop, dataType });
+    Object.keys(dataType.dataTypes).forEach((subProp) =>
+      addDataTypes(subProp, dataType.dataTypes[subProp], [
+        ...indecies,
+        dataType.index,
+      ])
+    );
+  } else
+    for (var rowIndex = 0; rowIndex < dataArray.length; rowIndex++) {
+      let subRow = dataArray[rowIndex];
+      for (
+        var subPropsIndex = 0;
+        subPropsIndex < indecies.length;
+        subPropsIndex++
+      ) {
+        subRow = subRow[indecies[subPropsIndex]];
+      }
+      //  console.log({ propValue, prop });
+      const propValue = subRow[propIndex];
+      let colType = typeof propValue;
+      if (indecies.length) {
+        console.log({ propValue });
+        console.log(dataArray[rowIndex]);
+        console.log(subRow);
+        console.log("iterer over underarrray!");
+      }
+      if (colType === "undefined") dataType.hasNullValues = true;
+      else {
+        if (colType === "object" && Array.isArray(propValue)) {
+          colType = "array";
+          //array of simple objects
+          for (
+            var subRowIndex = 0;
+            subRowIndex < propValue.length;
+            subRowIndex++
+          ) {
+            const supPropValue = propValue[subRowIndex];
+            let subColType = typeof supPropValue;
+            if (subColType === "object" && supPropValue instanceof Date) {
+              subColType = "date";
+            }
+            dataType.subColType = subColType;
+          }
+        } else if (colType === "object" && propValue instanceof Date) {
+          colType = "date";
+        }
+        dataType.colType = colType;
+      }
+      if (dataType.colType != colType && colType !== "undefined")
+        console.log({ prob: "flere typer!", propValue, prop });
     }
-    if (dataTypes[prop].colType != colType) console.log({ propValue, prop });
-    dataTypes[prop].colType = colType;
-  }
 };
 
 const analyzeData = (data, defaultdateformat) => {
@@ -163,13 +209,14 @@ const analyzeData = (data, defaultdateformat) => {
   let columnsWithMultipleTypes = {};
   if (dataColumns) {
     columns = dataColumns;
+    dataArray = rows;
     dataTypes = createHeaders(dataColumns);
     //data has rows property which is array of arrays. Must have a rowid property
     idIndex = columns.indexOf("rowid");
-    dataArray = rows;
-    console.log(JSON.stringify(dataTypes));
-    Object.keys(dataTypes).forEach(addDataTypes);
-    console.log(JSON.stringify(dataTypes));
+    Object.keys(dataTypes).forEach((prop) =>
+      addDataTypes(prop, dataTypes[prop])
+    );
+    console.log(dataTypes);
     for (var i = 0; i < dataArray.length; i++) {
       break;
       const row = rows[i];
