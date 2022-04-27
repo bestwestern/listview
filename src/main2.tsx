@@ -37,11 +37,7 @@ function setData() {
       "cases",
       "deaths",
       {
-        symptoms_age: [
-          "symptom",
-          "age",
-          // { family: ["Relation", "Age"] }
-        ],
+        symptoms_age: ["symptom", "age", { family: ["Relation", "Age"] }],
       },
       "primarysymptons",
     ],
@@ -1347,9 +1343,9 @@ function setData() {
       arr.push([
         possibleSymptoms[Math.floor(Math.random() * possibleSymptoms.length)],
         Math.floor(Math.random() * 70 + 5),
-        // possibleFamilyArrays[
-        //   Math.floor(Math.random() * possibleFamilyArrays.length)
-        // ],
+        possibleFamilyArrays[
+          Math.floor(Math.random() * possibleFamilyArrays.length)
+        ],
       ]);
     }
 
@@ -1357,10 +1353,17 @@ function setData() {
   };
   const possibleFamilyArrays = [
     [],
-    // ["Father", 50],
-    // ["Father", 40, "Mother", 38],
-    // ["Father", 40, "Mother", 38, "Sister", 18],
-    // ["Sister", 28],
+    [["Father", 50]],
+    [
+      ["Father", 40],
+      ["Mother", 38],
+    ],
+    [
+      ["Father", 40],
+      ["Mother", 38],
+      ["Sister", 18],
+    ],
+    [["Sister", 28]],
   ];
   const possibleSymptoms = [
     "Aching body",
@@ -1380,6 +1383,6 @@ function setData() {
       possibleSymptoms[Math.floor(Math.random() * possibleSymptoms.length)],
     ]);
   });
-  console.log(data.rows.slice(0, 5));
+  console.log(data.rows.slice(data.rows.length - 5));
   el[0].data = data;
 }

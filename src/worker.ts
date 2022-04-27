@@ -133,15 +133,43 @@ const createHeaders = (dataColumns, indecies = []) => {
   return newDataTypeObject;
 };
 
+function makeIterator(indecies, row) {
+  let currentIndecies = new Array(indecies.length).fill(0);
+  let currentLengths = new Array(indecies.length).fill(0);
+  let cont = true;
+  const rangeIterator = {
+    next() {
+      let result;
+      if (cont) {
+        let returnRow = row;
+        for (var i = 0; i < indecies.length; i++) {
+          if (!returnRow) return { value: undefined, done: true };
+          const subArray = returnRow[indecies[i]];
+          currentLengths[i] = subArray.length;
+          returnRow = subArray[currentIndecies[i]];
+        }
+        result = { value: returnRow, done: returnRow == undefined };
+        cont = false;
+        if (indecies.length)
+          for (var i = indecies.length - 1; i >= 0; i--) {
+            if (currentIndecies[i] < currentLengths[i] - 1) {
+              currentIndecies[i] = currentIndecies[i] + 1;
+              cont = true;
+              break;
+            } else currentIndecies[i] = 0;
+          }
+        return result;
+      }
+      return { value: false, done: true };
+    },
+  };
+  return rangeIterator;
+}
+
 const addDataTypes = (prop, dataType, indecies = []) => {
-  if (indecies.length)
-    console.log({ prop, dt: JSON.stringify(dataType), indecies });
-  // let dataTypeLeveled = dataTypes;
-  //   dataTypeLeveled = dataTypeLeveled[subProps[subPropsIndex]];
-  // let dataType = dataTypeLeveled[prop];
+  console.log(prop);
   const propIndex = dataType.index;
   if (dataType.dataTypes) {
-    console.log({ prop, dataType });
     Object.keys(dataType.dataTypes).forEach((subProp) =>
       addDataTypes(subProp, dataType.dataTypes[subProp], [
         ...indecies,
@@ -151,50 +179,43 @@ const addDataTypes = (prop, dataType, indecies = []) => {
   } else
     for (var rowIndex = 0; rowIndex < dataArray.length; rowIndex++) {
       let subRow = dataArray[rowIndex];
-      for (
-        var subPropsIndex = 0;
-        subPropsIndex < indecies.length;
-        subPropsIndex++
-      ) {
-        subRow = subRow[indecies[subPropsIndex]];
-      }
-      //  console.log({ propValue, prop });
-      const propValue = subRow[propIndex];
-      let colType = typeof propValue;
-      if (indecies.length) {
-        console.log({ propValue });
-        console.log(dataArray[rowIndex]);
-        console.log(subRow);
-        console.log("iterer over underarrray!");
-      }
-      if (colType === "undefined") dataType.hasNullValues = true;
-      else {
-        if (colType === "object" && Array.isArray(propValue)) {
-          colType = "array";
-          //array of simple objects
-          for (
-            var subRowIndex = 0;
-            subRowIndex < propValue.length;
-            subRowIndex++
-          ) {
-            const supPropValue = propValue[subRowIndex];
-            let subColType = typeof supPropValue;
-            if (subColType === "object" && supPropValue instanceof Date) {
-              subColType = "date";
+      const it = makeIterator(indecies, subRow);
+      let res = it.next();
+      while (!res.done) {
+        const propValue = res.value[propIndex];
+        //if (prop === "Relation") console.log(propValue, subRow);
+        let colType = typeof propValue;
+        if (colType === "undefined") dataType.hasNullValues = true;
+        else {
+          if (colType === "object" && Array.isArray(propValue)) {
+            colType = "array";
+            //array of simple objects
+            for (
+              var subRowIndex = 0;
+              subRowIndex < propValue.length;
+              subRowIndex++
+            ) {
+              const supPropValue = propValue[subRowIndex];
+              let subColType = typeof supPropValue;
+              if (subColType === "object" && supPropValue instanceof Date) {
+                subColType = "date";
+              }
+              dataType.subColType = subColType;
             }
-            dataType.subColType = subColType;
+          } else if (colType === "object" && propValue instanceof Date) {
+            colType = "date";
           }
-        } else if (colType === "object" && propValue instanceof Date) {
-          colType = "date";
+          dataType.colType = colType;
         }
-        dataType.colType = colType;
+        if (dataType.colType != colType && colType !== "undefined")
+          console.log({ prob: "flere typer!", propValue, prop });
+        res = it.next();
       }
-      if (dataType.colType != colType && colType !== "undefined")
-        console.log({ prob: "flere typer!", propValue, prop });
     }
 };
 
 const analyzeData = (data, defaultdateformat) => {
+  console.log({ data });
   const { rows, dateProps } = data;
   columnHeaders = data.columnHeaders || {};
   const dataColumns = data.columns;
@@ -207,7 +228,7 @@ const analyzeData = (data, defaultdateformat) => {
   //   if (typeof c === "string") dataTypes[c] = { header: columnHeaders[c] || c };
   // }
   let columnsWithMultipleTypes = {};
-  if (dataColumns) {
+  if (dataColumns && rows.length) {
     columns = dataColumns;
     dataArray = rows;
     dataTypes = createHeaders(dataColumns);
