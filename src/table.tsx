@@ -7,7 +7,6 @@ export function Table({
   const { headers, rows, searchToIndex } = tableData;
   const searchedPercentage = (100 * searchToIndex) / rowCount;
   //const foundPercentage = (100 * table) / rowCount;
-
   return (
     <div>
       <pre>
@@ -21,7 +20,6 @@ export function Table({
             {headers
               .filter((header) => {
                 return typeof header === "string";
-                return true;
               })
               .map((header) => (
                 <th scope="col">{header} </th>

@@ -239,40 +239,40 @@ const analyzeData = (data, defaultdateformat) => {
     );
     console.log(dataTypes);
     for (var i = 0; i < dataArray.length; i++) {
-      break;
       const row = rows[i];
       const rowId = row[idIndex];
-      for (var colIndex = 0; colIndex < colCount; colIndex++) {
-        let val = row[colIndex];
-        const columnProp = dataColumns[colIndex];
-        const dateFormat = dateProps[columnProp];
-        if (dateFormat) {
-          val = stringToDate(val, dateFormat);
-          row[colIndex] = val;
-        }
-        let colType = typeof val;
-        if (colType === "object" && Array.isArray(val)) colType = "array";
-        else if (colType === "object" && val instanceof Date) {
-          dateProperties[columnProp] = true;
-          if (dateStringValuesForProps[columnProp] === undefined)
-            dateStringValuesForProps[columnProp] = {};
-          dateStringValuesForProps[columnProp][rowId] = dateToString(
-            val,
-            "ddmmyyyy"
-          );
-          colType = "date";
-        }
-        if (typeof columnProp === "string")
-          if (dataTypes[columnProp].colType) {
-            dataTypes[columnProp].index = colIndex;
-            if (dataTypes[columnProp].colType !== colType)
-              columnsWithMultipleTypes[columnProp] = [
-                colType,
-                dataTypes[columnProp].colType,
-              ];
-          } else dataTypes[columnProp].colType = colType;
-        //        dataTypes[columnProp][colType] = true;
-      }
+      // break;
+      // for (var colIndex = 0; colIndex < colCount; colIndex++) {
+      //   let val = row[colIndex];
+      //   const columnProp = dataColumns[colIndex];
+      //   const dateFormat = dateProps[columnProp];
+      //   if (dateFormat) {
+      //     val = stringToDate(val, dateFormat);
+      //     row[colIndex] = val;
+      //   }
+      //   let colType = typeof val;
+      //   if (colType === "object" && Array.isArray(val)) colType = "array";
+      //   else if (colType === "object" && val instanceof Date) {
+      //     dateProperties[columnProp] = true;
+      //     if (dateStringValuesForProps[columnProp] === undefined)
+      //       dateStringValuesForProps[columnProp] = {};
+      //     dateStringValuesForProps[columnProp][rowId] = dateToString(
+      //       val,
+      //       "ddmmyyyy"
+      //     );
+      //     colType = "date";
+      //   }
+      //   if (typeof columnProp === "string")
+      //     if (dataTypes[columnProp].colType) {
+      //       dataTypes[columnProp].index = colIndex;
+      //       if (dataTypes[columnProp].colType !== colType)
+      //         columnsWithMultipleTypes[columnProp] = [
+      //           colType,
+      //           dataTypes[columnProp].colType,
+      //         ];
+      //     } else dataTypes[columnProp].colType = colType;
+      //   //        dataTypes[columnProp][colType] = true;
+      // }
       idsAsSorted.push(rowId);
       dataDictionary[rowId] = row;
     }
@@ -292,10 +292,13 @@ const analyzeData = (data, defaultdateformat) => {
   searchData(++searchCount);
 };
 const searchData = (currentSearchCount, fromIndex = 0) => {
+  console.log(currentSearchCount, fromIndex);
   if (!fromIndex) if (currentSearchCount !== searchCount) return;
   const searchToIndex = Math.min(idsAsSorted.length, fromIndex + 100);
+  console.log(searchToIndex);
   for (var rowIndex = fromIndex; rowIndex < searchToIndex; rowIndex++) {
     const row = dataArray[rowIndex];
+    console.log(row);
     if (!currentQuery.trim().length || doesQueryCheck(row)) {
       if (doesRowCheckCriteria(row)) searchResults.push(row[idIndex]);
     }

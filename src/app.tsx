@@ -140,7 +140,6 @@ export function App(props) {
     }
     didMount.current = true;
   }, [query]);
-  console.log({ statisticsSettings });
   return (
     <div>
       <a href={window.location.origin}>reset</a>
