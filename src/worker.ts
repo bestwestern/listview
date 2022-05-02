@@ -17,9 +17,9 @@ let idIndex = -1;
 let searchCount = 0;
 let columns = [];
 let dataTypes = {};
-let dateProperties = {};
 let columnHeaders = {};
 let currentActiveCriteria = false;
+let currentActiveCriteriaHits = [];
 let currentCriteria = [];
 let customCriteria = {};
 let dateStringValuesForProps = {};
@@ -59,6 +59,7 @@ onmessage = function (e) {
         JSON.stringify(newActiveCriteria)
       ) {
         currentActiveCriteria = newActiveCriteria;
+        currentActiveCriteriaHits = Array(newActiveCriteria.length).fill([]);
         searchResults = [];
         searchData(++searchCount);
       }
@@ -90,6 +91,8 @@ const analyseCriteria = () => {
             .sort((a, b) => b[1] - a[1])
             .map((arr) => ({ val: arr[0], count: arr[1] }))
         );
+      } else {
+        criterionDataArray.push(null);
       }
     } else criterionDataArray.push(null);
   });
@@ -295,10 +298,8 @@ const searchData = (currentSearchCount, fromIndex = 0) => {
   console.log(currentSearchCount, fromIndex);
   if (!fromIndex) if (currentSearchCount !== searchCount) return;
   const searchToIndex = Math.min(idsAsSorted.length, fromIndex + 100);
-  console.log(searchToIndex);
   for (var rowIndex = fromIndex; rowIndex < searchToIndex; rowIndex++) {
     const row = dataArray[rowIndex];
-    console.log(row);
     if (!currentQuery.trim().length || doesQueryCheck(row)) {
       if (doesRowCheckCriteria(row)) searchResults.push(row[idIndex]);
     }

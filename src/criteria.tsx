@@ -1,5 +1,6 @@
 import { useState } from "preact/hooks";
 import { CriterionText } from "./criteriontext";
+import { CriterionNumber } from "./criterionnumber";
 export function CriteriaSection({
   dataTypes,
   query,
@@ -15,12 +16,14 @@ export function CriteriaSection({
     if (isCustom) setCriteria([...criteria, { prop }]);
     else setCriteria([...criteria, { prop, q: "" }]);
   };
+  console.log({ criteria, criterionDataArray });
   const getCriteriaElement = (prop, index) => {
     const criterion = criteria[index];
     const criterionData = criterionDataArray[index] || [];
     const updateCriterion = (value) =>
       setCriteria(criteria.map((c, i) => (i === index ? value : c)));
     if (Object.keys(dataTypes).length > 0) {
+      console.log({ criterion, criterionData });
       if (dataTypes[prop]) {
         if (dataTypes[prop].colType === "string")
           return (
@@ -31,6 +34,17 @@ export function CriteriaSection({
                 updateCriterion={updateCriterion}
                 criterionData={criterionData}
               ></CriterionText>
+            </>
+          );
+        else if (dataTypes[prop].colType === "number")
+          return (
+            <>
+              <span>{dataTypes[prop].header}</span>
+              <CriterionNumber
+                criterion={criterion}
+                updateCriterion={updateCriterion}
+                criterionData={criterionData}
+              ></CriterionNumber>
             </>
           );
       } else {
