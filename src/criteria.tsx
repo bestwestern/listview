@@ -16,14 +16,12 @@ export function CriteriaSection({
     if (isCustom) setCriteria([...criteria, { prop }]);
     else setCriteria([...criteria, { prop, q: "" }]);
   };
-  console.log({ criteria, criterionDataArray });
   const getCriteriaElement = (prop, index) => {
     const criterion = criteria[index];
     const criterionData = criterionDataArray[index] || [];
     const updateCriterion = (value) =>
       setCriteria(criteria.map((c, i) => (i === index ? value : c)));
     if (Object.keys(dataTypes).length > 0) {
-      console.log({ criterion, criterionData });
       if (dataTypes[prop]) {
         if (dataTypes[prop].colType === "string")
           return (

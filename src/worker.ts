@@ -17,6 +17,7 @@ let idIndex = -1;
 let searchCount = 0;
 let columns = [];
 let dataTypes = {};
+let dateProperties = {};
 let columnHeaders = {};
 let currentActiveCriteria = false;
 let currentActiveCriteriaHits = [];
@@ -75,38 +76,62 @@ const analyseCriteria = () => {
   currentCriteria.forEach((criterion) => {
     const { prop, q } = criterion;
     const dataType = dataTypes[prop];
+    console.log({ criterion });
     if (dataType) {
-      if (dataType.colType === "string") {
-        let criterionData = {};
-        const { index } = dataType;
-        for (var i = 0; i < searchResults.length; i++) {
-          const rowVal = dataDictionary[searchResults[i]][index];
-          criterionData[rowVal] = criterionData[rowVal]
-            ? criterionData[rowVal] + 1
-            : 1;
-        }
+      let criterionData = {};
+      const { index } = dataType;
+      switch (dataType.colType) {
+        case "string":
+          for (var i = 0; i < searchResults.length; i++) {
+            const rowVal = dataDictionary[searchResults[i]][index];
+            criterionData[rowVal] = criterionData[rowVal]
+              ? criterionData[rowVal] + 1
+              : 1;
+          }
 
-        criterionDataArray.push(
-          Object.entries(criterionData)
-            .sort((a, b) => b[1] - a[1])
-            .map((arr) => ({ val: arr[0], count: arr[1] }))
-        );
-      } else {
-        criterionDataArray.push(null);
+          criterionDataArray.push(
+            Object.entries(criterionData)
+              .sort((a, b) => b[1] - a[1])
+              .map((arr) => ({ val: arr[0], count: arr[1] }))
+          );
+          break;
+        default:
+          console.log(dataType.colType);
+          criterionDataArray.push(null);
+          break;
+        case "number":
+          let min, max;
+          let hasDecimalValues = false;
+          for (var i = 0; i < searchResults.length; i++) {
+            const rowVal = dataDictionary[searchResults[i]][index];
+            if (rowVal % 1 !== 0) hasDecimalValues = true;
+            if (min == undefined || min > rowVal) min = rowVal;
+            if (max == undefined || max < rowVal) max = rowVal;
+          }
+          criterionDataArray.push({
+            min,
+            max,
+            hasDecimalValues,
+          });
+          break;
       }
     } else criterionDataArray.push(null);
   });
+  console.log(criterionDataArray);
   postMessage({ criterionDataArray });
 };
 const getActiveCriteriaFromArray = (criteriaArray) => {
   return criteriaArray.filter((criterion) => {
     const { prop, q } = criterion;
     if (dataTypes[prop]) {
-      if (dataTypes[prop].string) {
+      if (dataTypes[prop].colType === "string") {
+        if (q.trim().length) return true;
+      }
+      if (dataTypes[prop].colType === "number") {
         if (q.trim().length) return true;
       }
     }
-    return true;
+    return false;
   });
 };
 const createHeaders = (dataColumns, indecies = []) => {
@@ -170,7 +195,6 @@ function makeIterator(indecies, row) {
 }
 
 const addDataTypes = (prop, dataType, indecies = []) => {
-  console.log(prop);
   const propIndex = dataType.index;
   if (dataType.dataTypes) {
     Object.keys(dataType.dataTypes).forEach((subProp) =>
@@ -218,7 +242,6 @@ const addDataTypes = (prop, dataType, indecies = []) => {
 };
 
 const analyzeData = (data, defaultdateformat) => {
-  console.log({ data });
   const { rows, dateProps } = data;
   columnHeaders = data.columnHeaders || {};
   const dataColumns = data.columns;
@@ -295,7 +318,6 @@ const analyzeData = (data, defaultdateformat) => {
   searchData(++searchCount);
 };
 const searchData = (currentSearchCount, fromIndex = 0) => {
-  console.log(currentSearchCount, fromIndex);
   if (!fromIndex) if (currentSearchCount !== searchCount) return;
   const searchToIndex = Math.min(idsAsSorted.length, fromIndex + 100);
   for (var rowIndex = fromIndex; rowIndex < searchToIndex; rowIndex++) {
@@ -398,7 +420,8 @@ const sendSearchResult = (searchToIndex: number) => {
 const doesRowCheckCriteria = (row) => {
   const firstCriterionNotChecked = currentActiveCriteria.find((criterion) => {
     if (!criterion) return false;
-    const { prop, q } = criterion;
+    console.log({ criterion });
+    const { prop, q, rel = "eq" } = criterion;
     const dataType = dataTypes[prop];
     if (dataType) {
       const propValue = row[dataType.index];
@@ -407,6 +430,19 @@ const doesRowCheckCriteria = (row) => {
         !propValue.toLowerCase().includes(q.toLowerCase())
       )
         return true;
+      if (dataType.colType === "number") {
+        switch (rel) {
+          case "eq":
+            if (propValue != q) return true;
+            break;
+          case "lt":
+            if (propValue > q) return true;
+            break;
+          case "gt":
+            if (propValue < q) return true;
+            break;
+        }
+      }
     }
     if (customCriteria[prop]) {
       return !customCriteria[prop](row, criterion);
