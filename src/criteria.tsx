@@ -9,6 +9,7 @@ export function CriteriaSection({
   setCriteria,
   customCriteria,
   criterionDataArray,
+  setCriterionDataArray,
 }) {
   const [addingCriteria, setAddingCriteria] = useState(false);
   const [addingCriteriaQuery, setAddingCriteriaQuery] = useState("");
@@ -16,11 +17,18 @@ export function CriteriaSection({
     if (isCustom) setCriteria([...criteria, { prop }]);
     else setCriteria([...criteria, { prop, q: "" }]);
   };
+  const updateCriterion = (index, value) => {
+    console.log("updating");
+    console.log(index, value);
+    let cr = criteria;
+    console.log(JSON.stringify(cr));
+    cr = cr.map((c, i) => (i === index ? value : c));
+    console.log(JSON.stringify(cr));
+    setCriteria(cr);
+  };
   const getCriteriaElement = (prop, index) => {
     const criterion = criteria[index];
     const criterionData = criterionDataArray[index] || [];
-    const updateCriterion = (value) =>
-      setCriteria(criteria.map((c, i) => (i === index ? value : c)));
     if (Object.keys(dataTypes).length > 0) {
       if (dataTypes[prop]) {
         if (dataTypes[prop].colType === "string")
@@ -29,22 +37,25 @@ export function CriteriaSection({
               <span>{dataTypes[prop].header}</span>
               <CriterionText
                 criterion={criterion}
-                updateCriterion={updateCriterion}
+                updateCriterion={updateCriterion.bind(this, index)}
                 criterionData={criterionData}
               ></CriterionText>
             </>
           );
-        else if (dataTypes[prop].colType === "number")
+        else if (dataTypes[prop].colType === "number") {
           return (
             <>
               <span>{dataTypes[prop].header}</span>
-              <CriterionNumber
-                criterion={criterion}
-                updateCriterion={updateCriterion}
-                criterionData={criterionData}
-              ></CriterionNumber>
+              {criterionData && criterionData.max !== undefined && (
+                <CriterionNumber
+                  criterion={criterion}
+                  updateCriterion={updateCriterion.bind(this, index)}
+                  criterionData={criterionData}
+                ></CriterionNumber>
+              )}
             </>
           );
+        }
       } else {
         let Crit = customCriteria.find((cc) => cc.shortName === prop);
         Crit = Crit && Crit.tag;
@@ -84,9 +95,12 @@ export function CriteriaSection({
             {getCriteriaElement(prop, index)}
             <button
               type="button"
-              onClick={(e) =>
-                setCriteria(criteria.filter((c, i) => index !== i))
-              }
+              onClick={(e) => {
+                setCriterionDataArray(
+                  criterionDataArray.filter((a, i) => i !== index)
+                );
+                setCriteria(criteria.filter((c, i) => i !== index));
+              }}
             >
               Remove
             </button>

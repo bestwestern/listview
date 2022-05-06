@@ -60,10 +60,10 @@ onmessage = function (e) {
         JSON.stringify(newActiveCriteria)
       ) {
         currentActiveCriteria = newActiveCriteria;
-        currentActiveCriteriaHits = Array(newActiveCriteria.length).fill([]);
+        //currentActiveCriteriaHits = Array(newActiveCriteria.length).fill([]);
         searchResults = [];
         searchData(++searchCount);
-      }
+      } else analyseCriteria();
     }
   }
   if (customCriterion) {
@@ -72,11 +72,11 @@ onmessage = function (e) {
   }
 };
 const analyseCriteria = () => {
+  console.log("ac " + searchResults.length);
   let criterionDataArray = [];
   currentCriteria.forEach((criterion) => {
     const { prop, q } = criterion;
     const dataType = dataTypes[prop];
-    console.log({ criterion });
     if (dataType) {
       let criterionData = {};
       const { index } = dataType;
@@ -96,17 +96,17 @@ const analyseCriteria = () => {
           );
           break;
         default:
-          console.log(dataType.colType);
           criterionDataArray.push(null);
           break;
         case "number":
-          let min, max;
+          let min = false,
+            max = false;
           let hasDecimalValues = false;
           for (var i = 0; i < searchResults.length; i++) {
             const rowVal = dataDictionary[searchResults[i]][index];
             if (rowVal % 1 !== 0) hasDecimalValues = true;
-            if (min == undefined || min > rowVal) min = rowVal;
-            if (max == undefined || max < rowVal) max = rowVal;
+            if (min == false || min > rowVal) min = rowVal;
+            if (max == false || max < rowVal) max = rowVal;
           }
           criterionDataArray.push({
             min,
@@ -117,7 +117,6 @@ const analyseCriteria = () => {
       }
     } else criterionDataArray.push(null);
   });
-  console.log(criterionDataArray);
   postMessage({ criterionDataArray });
 };
 const getActiveCriteriaFromArray = (criteriaArray) => {
@@ -420,7 +419,6 @@ const sendSearchResult = (searchToIndex: number) => {
 const doesRowCheckCriteria = (row) => {
   const firstCriterionNotChecked = currentActiveCriteria.find((criterion) => {
     if (!criterion) return false;
-    console.log({ criterion });
     const { prop, q, rel = "eq" } = criterion;
     const dataType = dataTypes[prop];
     if (dataType) {

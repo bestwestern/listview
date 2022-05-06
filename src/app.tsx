@@ -143,6 +143,7 @@ export function App(props) {
   return (
     <div>
       <a href={window.location.origin}>reset</a>
+      <span>{JSON.stringify(criteria)}</span>
       <CriteriaSection
         dataTypes={dataTypes}
         setQuery={setQuery}
@@ -150,6 +151,7 @@ export function App(props) {
         criteria={criteria}
         setCriteria={setCriteria}
         criterionDataArray={criterionDataArray}
+        setCriterionDataArray={setCriterionDataArray} //used to empty data when critioerion removed
         customCriteria={customCriteria}
       />
       <hr />

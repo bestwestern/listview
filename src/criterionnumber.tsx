@@ -1,63 +1,56 @@
 import { useState, useEffect, useRef } from "preact/hooks";
 import * as noUiSlider from "nouislider";
+import wnumb from "wnumb";
 import "nouislider/dist/nouislider.css";
+//used to avoid decimals - maybe use
+const to = (val) => val.toString();
+const from = (val) => Number(val);
 export function CriterionNumber({ criterion, updateCriterion, criterionData }) {
-  console.log({ criterionData });
+  const { min, max, hasDecimalValues } = criterionData;
+  const { q, rel = "eq", slf, slt } = criterion; //slf=sliderFrom, slt=sliderTo
   const sliderRef = useRef();
-  const min = criterionData && criterionData.min ? criterionData.min : 0;
-  const max = criterionData && criterionData.max ? criterionData.max : 0;
-  const [showCount, setShowCount] = useState(8);
-  useEffect(() => {
-    setShowCount(8);
-  }, [criterionData]);
   useEffect(() => {
     var slider = sliderRef.current;
     noUiSlider.create(slider, {
-      start: [min, max],
+      start: [slf || 0, slt || 0],
       connect: true,
-      tooltips: {
-        to: function (value) {
-          return value.toString();
-        },
-        from: function (value) {
-          return value;
-        },
-      },
+      tooltips: wnumb({ decimals: 0 }),
       range: {
         min: 0,
         max,
       },
       step: 1,
       format: {
-        to: function (value) {
-          return value.toString();
-        },
-        from: function (value) {
-          return value;
-        },
+        to,
+        from,
       },
+    });
+    slider.noUiSlider.on("end", (val) => {
+      let [newFrom, newTo] = val;
+      if (!hasDecimalValues) {
+        newFrom = Math.round(newFrom);
+        newTo = Math.round(newTo);
+      }
+      updateCriterion({ ...criterion, slf: newFrom, slt: newTo });
     });
   }, []);
   useEffect(() => {
     var slider = sliderRef.current;
-    console.log(slider);
+    console.log({ min, max });
+    // if (slf!==undefined||slt!==undefined){
+    //   let newSlf
+    //   if (slf!==undefined)
+    // }
     slider.noUiSlider.updateOptions(
       { range: { min, max } },
       false // Boolean 'fireSetEvent'
     );
-    slider.noUiSlider.set([min, max]);
-    // var slider = document.getElementById("slider");
-    // noUiSlider.create(slider, {
-    //   start: [20, 80],
-    //   connect: true,
-    //   tooltips: true,
-    //   range: {
-    //     min,
-    //     max: 100,
-    //   },
-    // });
+    // const newMin = Math.max([min, slf]);
+    // slider.noUiSlider.set([newMin, max]);
   }, [min, max]);
-  const { q, rel = "eq" } = criterion;
+  // useEffect(() => {
+  //   slider.noUiSlider.set([min, max]);
+  // }, [slf, slt]);
   const updateCriterionProp = ({ prop, value }) => {
     updateCriterion({ ...criterion, [prop]: value });
   };
@@ -83,18 +76,18 @@ export function CriterionNumber({ criterion, updateCriterion, criterionData }) {
             {txt}
           </button>
         ))}
+        <pre>{JSON.stringify({ criterion, min, max }, null, 2)}</pre>
         <input
           type="text"
           value={q}
           onInput={(e) =>
             updateCriterionProp({ prop: "q", value: e.target.value })
           }
-          placeholder="Search"
         />
       </p>
       <p
         style={{
-          display: max && min !== max ? "block" : "none",
+          display: true ? "block" : "none",
           padding: "30px",
         }}
       >
