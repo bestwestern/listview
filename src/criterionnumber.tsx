@@ -1,59 +1,69 @@
-import { useState, useEffect, useRef } from "preact/hooks";
-import * as noUiSlider from "nouislider";
+import { useState, useEffect, useRef, useMemo } from "preact/hooks";
 import wnumb from "wnumb";
 import "nouislider/dist/nouislider.css";
+import Slider from "./slider";
 //used to avoid decimals - maybe use
 const to = (val) => val.toString();
 const from = (val) => Number(val);
 export function CriterionNumber({ criterion, updateCriterion, criterionData }) {
   const { min, max, hasDecimalValues } = criterionData;
+  console.log(criterionData);
   const { q, rel = "eq", slf, slt } = criterion; //slf=sliderFrom, slt=sliderTo
   const sliderRef = useRef();
-  useEffect(() => {
-    var slider = sliderRef.current;
-    noUiSlider.create(slider, {
-      start: [slf || 0, slt || 0],
-      connect: true,
-      tooltips: wnumb({ decimals: 0 }),
-      range: {
-        min: 0,
-        max,
-      },
-      step: 1,
-      format: {
-        to,
-        from,
-      },
-    });
-    slider.noUiSlider.on("end", (val) => {
-      let [newFrom, newTo] = val;
-      if (!hasDecimalValues) {
-        newFrom = Math.round(newFrom);
-        newTo = Math.round(newTo);
-      }
-      updateCriterion({ ...criterion, slf: newFrom, slt: newTo });
-    });
-  }, []);
-  useEffect(() => {
-    var slider = sliderRef.current;
-    console.log({ min, max });
-    // if (slf!==undefined||slt!==undefined){
-    //   let newSlf
-    //   if (slf!==undefined)
-    // }
-    slider.noUiSlider.updateOptions(
-      { range: { min, max } },
-      false // Boolean 'fireSetEvent'
-    );
-    // const newMin = Math.max([min, slf]);
-    // slider.noUiSlider.set([newMin, max]);
-  }, [min, max]);
+  // useEffect(() => {
+  //   var slider = sliderRef.current;
+  //   noUiSlider.create(slider, {
+  //     start: [slf || 0, slt || 0],
+  //     connect: true,
+  //     tooltips: wnumb({ decimals: 0 }),
+  //     range: {
+  //       min: 0,
+  //       max,
+  //     },
+  //     step: 1,
+  //     format: {
+  //       to,
+  //       from,
+  //     },
+  //   });
+  //   slider.noUiSlider.on("end", (val) => {
+  //     let [newFrom, newTo] = val;
+  //     if (!hasDecimalValues) {
+  //       newFrom = Math.round(newFrom);
+  //       newTo = Math.round(newTo);
+  //     }
+  //     updateCriterion({ ...criterion, slf: newFrom, slt: newTo });
+  //   });
+  // }, []);
+  // useEffect(() => {
+  //   var slider = sliderRef.current;
+  //   console.log({ min, max });
+  //   // if (slf!==undefined||slt!==undefined){
+  //   //   let newSlf
+  //   //   if (slf!==undefined)
+  //   // }
+  //   slider.noUiSlider.updateOptions(
+  //     { range: { min, max } },
+  //     false // Boolean 'fireSetEvent'
+  //   );
+  //   // const newMin = Math.max([min, slf]);
+  //   // slider.noUiSlider.set([newMin, max]);
+  // }, [min, max]);
   // useEffect(() => {
   //   slider.noUiSlider.set([min, max]);
   // }, [slf, slt]);
   const updateCriterionProp = ({ prop, value }) => {
     updateCriterion({ ...criterion, [prop]: value });
   };
+  const slider = useMemo(
+    (min, max, hasDecimalValues) => {
+      console.log("me" + hasDecimalValues);
+      if (hasDecimalValues === undefined) return null;
+      return <Slider hasDecimalValues={hasDecimalValues} min={min} max={max} />;
+    },
+    [min, max, hasDecimalValues]
+  );
+  console.log({ slider });
   return (
     <>
       <p>
@@ -91,7 +101,7 @@ export function CriterionNumber({ criterion, updateCriterion, criterionData }) {
           padding: "30px",
         }}
       >
-        <div ref={sliderRef} />
+        {slider}
       </p>
     </>
   );

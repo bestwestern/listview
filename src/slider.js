@@ -5,7 +5,9 @@ import "nouislider/dist/nouislider.css";
 //used to avoid decimals - maybe use
 
 const Slider = (props) => {
+  console.log("sliderupdate");
   const { hasDecimalValues, min, max } = props;
+  console.log({ hasDecimalValues, min, max });
   const sliderRef = useRef();
   useEffect(() => {
     var slider = sliderRef.current;
@@ -29,7 +31,7 @@ const Slider = (props) => {
     });
   }, []);
   useEffect(() => {
-    slider.noUiSlider.updateOptions(
+    sliderRef.current.noUiSlider.updateOptions(
       { range: { min, max } },
       false // Boolean 'fireSetEvent'
     );
@@ -43,4 +45,4 @@ const Slider = (props) => {
   return <div ref={sliderRef} />;
 };
 
-export default useMemo(Slider);
+export default Slider;
