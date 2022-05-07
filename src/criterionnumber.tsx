@@ -5,8 +5,17 @@ import Slider from "./slider";
 //used to avoid decimals - maybe use
 const to = (val) => val.toString();
 const from = (val) => Number(val);
+const makeSlider = (min, max, hasDecimalValues) => {
+  if (hasDecimalValues === undefined) return null;
+  return <Slider hasDecimalValues={hasDecimalValues} min={min} max={max} />;
+};
 export function CriterionNumber({ criterion, updateCriterion, criterionData }) {
   const { min, max, hasDecimalValues } = criterionData;
+
+  const slider = useMemo(
+    () => makeSlider(min, max, hasDecimalValues),
+    [min, max, hasDecimalValues]
+  );
   console.log(criterionData);
   const { q, rel = "eq", slf, slt } = criterion; //slf=sliderFrom, slt=sliderTo
   const sliderRef = useRef();
@@ -55,15 +64,6 @@ export function CriterionNumber({ criterion, updateCriterion, criterionData }) {
   const updateCriterionProp = ({ prop, value }) => {
     updateCriterion({ ...criterion, [prop]: value });
   };
-  const slider = useMemo(
-    (min, max, hasDecimalValues) => {
-      console.log("me" + hasDecimalValues);
-      if (hasDecimalValues === undefined) return null;
-      return <Slider hasDecimalValues={hasDecimalValues} min={min} max={max} />;
-    },
-    [min, max, hasDecimalValues]
-  );
-  console.log({ slider });
   return (
     <>
       <p>
