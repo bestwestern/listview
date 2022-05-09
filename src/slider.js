@@ -1,10 +1,79 @@
-import { useEffect, useRef, useMemo } from "preact/hooks";
+import { Component, createRef } from "preact";
 import * as noUiSlider from "nouislider";
 import wnumb from "wnumb";
 import "nouislider/dist/nouislider.css";
 //used to avoid decimals - maybe use
+//used to avoid decimals - maybe use
+const to = (val) => val.toString();
+const from = (val) => Number(val);
+const makeSlider = (min, max, hasDecimalValues) => {
+  if (hasDecimalValues === undefined) return null;
+  return <Slider hasDecimalValues={hasDecimalValues} min={min} max={max} />;
+};
+class Slider extends Component {
+  constructor(props) {
+    super(props);
+    this.sliderRef = createRef();
+  }
+  shouldComponentUpdate(nextProps, nextState) {
+    console.log({ nextProps });
+    console.log({ cur: this.props });
+    const { criteria, criterion, criterionData } = nextProps;
+    const { slf, slt } = criterion;
+    const { min, max } = criterionData;
+    var slider = this.sliderRef.current;
+    if (slf === undefined) console.log({ min });
+    if (min !== undefined)
+      slider.noUiSlider.updateOptions(
+        { range: { min, max } },
+        false // Boolean 'fireSetEvent'
+      );
+    // const newMin = Math.max([min, slf]);
 
-const Slider = (props) => {
+    this.criteria = criteria;
+    return false;
+  }
+  componentDidMount() {
+    const slider = this.sliderRef.current;
+    const { criterion, criterionData, setCriteria, criteriaIndex } = this.props;
+    const { min, max, hasDecimalValues } = criterionData;
+    const { slf, slt } = criterion;
+    noUiSlider.create(slider, {
+      start: [slf || min, slt || max],
+      connect: true,
+      tooltips: wnumb({ decimals: 0 }),
+      range: {
+        min,
+        max,
+      },
+      step: 1,
+    });
+    slider.noUiSlider.on("end", (val) => {
+      let [newFrom, newTo] = val;
+      if (!hasDecimalValues) {
+        newFrom = Math.round(newFrom);
+        newTo = Math.round(newTo);
+      }
+      console.log("updating");
+      let criteria = this.criteria;
+      let cr = criteria;
+      let value = criteria[criteriaIndex];
+      value.slf = newFrom;
+      value.slt = newTo;
+      console.log(JSON.stringify(cr));
+      cr = cr.map((c, i) => (i === criteriaIndex ? value : c));
+      console.log(JSON.stringify(cr));
+      setCriteria(cr);
+    });
+  }
+  render() {
+    return <div ref={this.sliderRef}></div>;
+  }
+}
+
+export { Slider };
+
+const Sliderex = (props) => {
   console.log("sliderupdate");
   const { hasDecimalValues, min, max } = props;
   console.log({ hasDecimalValues, min, max });
@@ -45,4 +114,4 @@ const Slider = (props) => {
   return <div ref={sliderRef} />;
 };
 
-export default Slider;
+//export default Slider;
