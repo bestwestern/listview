@@ -18,12 +18,8 @@ export function CriteriaSection({
     else setCriteria([...criteria, { prop, q: "" }]);
   };
   const updateCriterion = (index, value) => {
-    console.log("updating");
-    console.log(index, value);
     let cr = criteria;
-    console.log(JSON.stringify(cr));
     cr = cr.map((c, i) => (i === index ? value : c));
-    console.log(JSON.stringify(cr));
     setCriteria(cr);
   };
   const getCriteriaElement = (prop, index) => {
@@ -51,6 +47,9 @@ export function CriteriaSection({
                   criterion={criterion}
                   updateCriterion={updateCriterion.bind(this, index)}
                   criterionData={criterionData}
+                  criteria={criteria}
+                  setCriteria={setCriteria}
+                  criteriaIndex={index}
                 ></CriterionNumber>
               )}
             </>

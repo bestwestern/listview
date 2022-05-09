@@ -1,24 +1,22 @@
 import { useState, useEffect, useRef, useMemo } from "preact/hooks";
 import wnumb from "wnumb";
-import "nouislider/dist/nouislider.css";
-import Slider from "./slider";
-//used to avoid decimals - maybe use
-const to = (val) => val.toString();
-const from = (val) => Number(val);
-const makeSlider = (min, max, hasDecimalValues) => {
-  if (hasDecimalValues === undefined) return null;
-  return <Slider hasDecimalValues={hasDecimalValues} min={min} max={max} />;
-};
-export function CriterionNumber({ criterion, updateCriterion, criterionData }) {
-  const { min, max, hasDecimalValues } = criterionData;
+//import "nouislider/dist/nouislider.css";
+import { Slider } from "./slider";
 
-  const slider = useMemo(
-    () => makeSlider(min, max, hasDecimalValues),
-    [min, max, hasDecimalValues]
-  );
-  console.log(criterionData);
+export function CriterionNumber({
+  criterion,
+  criteria,
+  updateCriterion,
+  criterionData,
+  setCriteria,
+  criteriaIndex,
+}) {
+  // const slider = useMemo(
+  //   () => makeSlider(min, max, hasDecimalValues),
+  //   [min, max, hasDecimalValues]
+  // );
+  // console.log(criterionData);
   const { q, rel = "eq", slf, slt } = criterion; //slf=sliderFrom, slt=sliderTo
-  const sliderRef = useRef();
   // useEffect(() => {
   //   var slider = sliderRef.current;
   //   noUiSlider.create(slider, {
@@ -86,7 +84,6 @@ export function CriterionNumber({ criterion, updateCriterion, criterionData }) {
             {txt}
           </button>
         ))}
-        <pre>{JSON.stringify({ criterion, min, max }, null, 2)}</pre>
         <input
           type="text"
           value={q}
@@ -101,7 +98,14 @@ export function CriterionNumber({ criterion, updateCriterion, criterionData }) {
           padding: "30px",
         }}
       >
-        {slider}
+        <pre>{JSON.stringify(criteria, null, 2)}</pre>
+        <Slider
+          criterionData={criterionData}
+          criterion={criterion}
+          criteria={criteria}
+          setCriteria={setCriteria}
+          criteriaIndex={criteriaIndex}
+        />
       </p>
     </>
   );
