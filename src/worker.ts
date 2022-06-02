@@ -20,7 +20,7 @@ let dataTypes = {};
 let dateProperties = {};
 let columnHeaders = {};
 let currentActiveCriteria = false;
-let currentActiveCriteriaHits = [];
+let currentCriteriaHits = []; //currentCriteriaHits[index]=['q',3] //the activecriterias currently STOPPING dataArray[index] from being included in search
 let currentCriteria = [];
 let customCriteria = {};
 let dateStringValuesForProps = {};
@@ -60,7 +60,7 @@ onmessage = function (e) {
         JSON.stringify(newActiveCriteria)
       ) {
         currentActiveCriteria = newActiveCriteria;
-        //currentActiveCriteriaHits = Array(newActiveCriteria.length).fill([]);
+        currentCriteriaHits = [];
         searchResults = [];
         searchData(++searchCount);
       } else analyseCriteria();
@@ -128,6 +128,8 @@ const getActiveCriteriaFromArray = (criteriaArray) => {
       }
       if (dataTypes[prop].colType === "number") {
         if (q.trim().length) return true;
+        const { slf, slt } = criterion;
+        if (slf !== undefined || slt !== undefined) return true;
       }
     }
     return false;
@@ -193,11 +195,11 @@ function makeIterator(indecies, row) {
   return rangeIterator;
 }
 
-const addDataTypes = (prop, dataType, indecies = []) => {
-  const propIndex = dataType.index;
+const addDataTypes = (prop, dataType, defaultdateformat, indecies = []) => {
+  const propIndex = dataType.index; //move to else
   if (dataType.dataTypes) {
     Object.keys(dataType.dataTypes).forEach((subProp) =>
-      addDataTypes(subProp, dataType.dataTypes[subProp], [
+      addDataTypes(subProp, dataType.dataTypes[subProp], defaultdateformat, [
         ...indecies,
         dataType.index,
       ])
@@ -208,7 +210,8 @@ const addDataTypes = (prop, dataType, indecies = []) => {
       const it = makeIterator(indecies, subRow);
       let res = it.next();
       while (!res.done) {
-        const propValue = res.value[propIndex];
+        let propValue = res.value[propIndex];
+
         //if (prop === "Relation") console.log(propValue, subRow);
         let colType = typeof propValue;
         if (colType === "undefined") dataType.hasNullValues = true;
@@ -225,11 +228,28 @@ const addDataTypes = (prop, dataType, indecies = []) => {
               let subColType = typeof supPropValue;
               if (subColType === "object" && supPropValue instanceof Date) {
                 subColType = "date";
+                // DO THIS FOR ARRAY
+                //if (dateStringValuesForProps[prop] === undefined)
+                //   dateStringValuesForProps[prop] = {};
+                // dateStringValuesForProps[prop][res.value[idIndex]] = dateToString(
+                //   propValue,
+                //   "ddmmyyyy"
+                // );
               }
               dataType.subColType = subColType;
             }
           } else if (colType === "object" && propValue instanceof Date) {
             colType = "date";
+          }
+
+          if (colType === "date" && indecies.length === 0) {
+            //what to do when subprops are dates?!
+            if (dateStringValuesForProps[prop] === undefined)
+              dateStringValuesForProps[prop] = {};
+            dateStringValuesForProps[prop][res.value[idIndex]] = dateToString(
+              propValue,
+              "ddmmyyyy"
+            );
           }
           dataType.colType = colType;
         }
@@ -241,7 +261,8 @@ const addDataTypes = (prop, dataType, indecies = []) => {
 };
 
 const analyzeData = (data, defaultdateformat) => {
-  const { rows, dateProps } = data;
+  const { rows } = data;
+
   columnHeaders = data.columnHeaders || {};
   const dataColumns = data.columns;
   const colCount = dataColumns.length;
@@ -260,55 +281,31 @@ const analyzeData = (data, defaultdateformat) => {
     //data has rows property which is array of arrays. Must have a rowid property
     idIndex = columns.indexOf("rowid");
     Object.keys(dataTypes).forEach((prop) =>
-      addDataTypes(prop, dataTypes[prop])
+      addDataTypes(prop, dataTypes[prop], defaultdateformat)
     );
     console.log(dataTypes);
     for (var i = 0; i < dataArray.length; i++) {
       const row = rows[i];
       const rowId = row[idIndex];
-      // break;
-      // for (var colIndex = 0; colIndex < colCount; colIndex++) {
-      //   let val = row[colIndex];
-      //   const columnProp = dataColumns[colIndex];
-      //   const dateFormat = dateProps[columnProp];
-      //   if (dateFormat) {
-      //     val = stringToDate(val, dateFormat);
-      //     row[colIndex] = val;
-      //   }
-      //   let colType = typeof val;
-      //   if (colType === "object" && Array.isArray(val)) colType = "array";
-      //   else if (colType === "object" && val instanceof Date) {
-      //     dateProperties[columnProp] = true;
-      //     if (dateStringValuesForProps[columnProp] === undefined)
-      //       dateStringValuesForProps[columnProp] = {};
-      //     dateStringValuesForProps[columnProp][rowId] = dateToString(
-      //       val,
-      //       "ddmmyyyy"
-      //     );
-      //     colType = "date";
-      //   }
-      //   if (typeof columnProp === "string")
-      //     if (dataTypes[columnProp].colType) {
-      //       dataTypes[columnProp].index = colIndex;
-      //       if (dataTypes[columnProp].colType !== colType)
-      //         columnsWithMultipleTypes[columnProp] = [
-      //           colType,
-      //           dataTypes[columnProp].colType,
-      //         ];
-      //     } else dataTypes[columnProp].colType = colType;
-      //   //        dataTypes[columnProp][colType] = true;
-      // }
       idsAsSorted.push(rowId);
       dataDictionary[rowId] = row;
     }
     let sortedColArray = dataColumns.map((prop) => {
       if (dataTypes[prop] && dataTypes[prop].colType === "date")
         return { prop, dateFormat: defaultdateformat };
+      if (dataTypes[prop] && dataTypes[prop].colType === "array")
+        return { prop, format: "1col" };
+      if (typeof prop === "object") return { prop: Object.keys(prop)[0] };
       else return { prop };
     });
+
     postMessage({ dataTypes, sortedColArray });
     if (!currentChosenColumns.length)
-      postMessage({ setColumnsTo: sortedColArray });
+      postMessage({
+        setColumnsTo: sortedColArray.filter(
+          (x) => !dataTypes[x.prop].dataTypes // don't choose subarrays as default
+        ),
+      });
   }
   if (Object.keys(columnsWithMultipleTypes).length)
     postMessage({ columnsWithMultipleTypes });
@@ -321,9 +318,23 @@ const searchData = (currentSearchCount, fromIndex = 0) => {
   const searchToIndex = Math.min(idsAsSorted.length, fromIndex + 100);
   for (var rowIndex = fromIndex; rowIndex < searchToIndex; rowIndex++) {
     const row = dataArray[rowIndex];
-    if (!currentQuery.trim().length || doesQueryCheck(row)) {
-      if (doesRowCheckCriteria(row)) searchResults.push(row[idIndex]);
+    currentCriteriaHits[rowIndex] = [];
+    if (currentQuery.trim().length && !doesQueryCheck(row))
+      currentCriteriaHits[rowIndex].push("q");
+    let activeCriteriaIndex = 0;
+    while (
+      currentCriteriaHits[rowIndex].length < 2 &&
+      activeCriteriaIndex < currentActiveCriteria.length
+    ) {
+      if (
+        !doesRowCheckCriteria(row, currentActiveCriteria[activeCriteriaIndex])
+      )
+        currentCriteriaHits[rowIndex].push(activeCriteriaIndex);
+      activeCriteriaIndex++;
     }
+    if (currentCriteriaHits[rowIndex].length)
+      console.log(row, currentCriteriaHits[rowIndex]);
+    else searchResults.push(row[idIndex]);
   }
 
   sendSearchResult(searchToIndex);
@@ -394,14 +405,22 @@ const sendSearchResult = (searchToIndex: number) => {
         const chosenColumnInfo = currentChosenColumns[chosenColumnIndex];
         const dataType = dataTypes[chosenColumnInfo.prop];
         if (dataType && dataType.colType)
-          if (dataType.colType === "date")
-            sendValArray.push(
-              dateToString(
-                valArray[dataType.index],
-                chosenColumnInfo.dateFormat
-              )
-            );
-          else sendValArray.push(valArray[dataType.index]);
+          switch (dataType.colType) {
+            case "date":
+              sendValArray.push(
+                dateToString(
+                  valArray[dataType.index],
+                  chosenColumnInfo.dateFormat
+                )
+              );
+              break;
+            case "array":
+              sendValArray.push(valArray[dataType.index].join(", "));
+              break;
+            default:
+              sendValArray.push(valArray[dataType.index]);
+              break;
+          }
       }
       return sendValArray;
     });
@@ -416,55 +435,86 @@ const sendSearchResult = (searchToIndex: number) => {
     });
   } else postMessage({ tableData: { rows: [], headers: [], searchToIndex } });
 };
-const doesRowCheckCriteria = (row) => {
-  const firstCriterionNotChecked = currentActiveCriteria.find((criterion) => {
-    if (!criterion) return false;
-    const { prop, q, rel = "eq" } = criterion;
-    const dataType = dataTypes[prop];
-    if (dataType) {
-      const propValue = row[dataType.index];
-      if (
-        dataType.colType === "string" &&
-        !propValue.toLowerCase().includes(q.toLowerCase())
-      )
-        return true;
-      if (dataType.colType === "number") {
+const doesRowCheckCriteria = (row, criterion) => {
+  if (!criterion) return true;
+  const { prop, q, rel = "eq" } = criterion;
+  const dataType = dataTypes[prop];
+  if (dataType) {
+    const propValue = row[dataType.index];
+    const { colType } = dataType;
+    switch (colType) {
+      case "string":
+        if (!propValue.toLowerCase().includes(q.toLowerCase())) return false;
+        break;
+      case "number":
+        console.log("bing " + rel);
         switch (rel) {
           case "eq":
-            if (propValue != q) return true;
+            if (propValue != q) return false;
             break;
           case "lt":
-            if (propValue > q) return true;
+            if (propValue > q) return false;
             break;
           case "gt":
-            if (propValue < q) return true;
+            if (propValue < q) return false;
+            break;
+          default: //ranger?
+            const { slf, slt } = criterion;
+            console.log({ slf, slt });
+            if (slt !== undefined && propValue > slf) return false;
             break;
         }
-      }
+        break;
     }
-    if (customCriteria[prop]) {
-      return !customCriteria[prop](row, criterion);
-    }
-  });
-  return !firstCriterionNotChecked;
+    return true;
+  }
+  // if (customCriteria[prop]) {
+  //   return !customCriteria[prop](row, criterion);
+  // }
 };
 const doesQueryCheck = (row) => {
-  for (var columnIndex = 0; columnIndex < row.length; columnIndex++) {
-    const columnProp = columns[columnIndex];
-    if (!columnProp) return false;
-    if (dataTypes[columnProp].colType === "date") {
-      if (
-        dateStringValuesForProps[columnProp][row[idIndex]].indexOf(
-          currentQuery
-        ) > -1
-      )
-        return true;
-    } else {
-      const column = row[columnIndex];
-      if (column.toString().toLowerCase().indexOf(currentQuery) > -1) {
-        return true;
+  return !!Object.keys(dataTypes).find((prop) =>
+    queryCheckProperty(row, prop, dataTypes[prop])
+  );
+};
+function queryCheckProperty(row, prop, dataType, indecies = []) {
+  if (dataType.dataTypes) {
+    return Object.keys(dataType.dataTypes).find((subProp) =>
+      queryCheckProperty(row, subProp, dataType.dataTypes[subProp], [
+        ...indecies,
+        dataType.index,
+      ])
+    );
+  } else {
+    const propIndex = dataType.index;
+    const it = makeIterator(indecies, row);
+    let res = it.next();
+    while (!res.done) {
+      let propValue = res.value[propIndex];
+      switch (dataType.colType) {
+        case "number":
+          return propValue.toString().indexOf(currentQuery) > -1;
+          break;
+        case "string":
+          return propValue.toLowerCase().toString().indexOf(currentQuery) > -1;
+          break;
+        case "date":
+          //subproperties?? indecies
+          break;
+        case "array":
+          switch (dataType.subColType) {
+            case "string":
+              return propValue.find(
+                (subVal) => subVal.toLowerCase().indexOf(currentQuery) > -1
+              );
+              break;
+          }
+          break;
+        default:
+          console.log(dataType.colType);
+          break;
       }
+      res = it.next();
     }
   }
-  return false;
-};
+}

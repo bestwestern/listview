@@ -41,9 +41,9 @@ function setData() {
       },
       "primarysymptons",
     ],
-    dateProps: {
-      date: "yyyy-mm-dd",
-    },
+    // stringDateProps: {
+    //   date: "yyyy-mm-dd",
+    // },
     human_description_en: 'where county = "Greene" sorted by date descending',
     rows: [
       [2369372, "2022-04-03", "Greene", "Alabama", 1063, 1868, 48],
@@ -1377,6 +1377,7 @@ function setData() {
     "Diarrhea",
   ];
   data.rows.forEach((row) => {
+    row[1] = stringToDate(row[1], "yyyy-mm-dd");
     row.push(createArrayData());
     row.push([
       possibleSymptoms[Math.floor(Math.random() * possibleSymptoms.length)],
@@ -1385,4 +1386,17 @@ function setData() {
   });
   console.log(data.rows.slice(data.rows.length - 5));
   el[0].data = data;
+}
+function stringToDate(_date, _format) {
+  var _delimiter = _format.match(/\W/g)[0];
+  var formatLowerCase = _format.toLowerCase();
+  var formatItems = formatLowerCase.split(_delimiter);
+  var dateItems = _date.split(_delimiter);
+  var monthIndex = formatItems.indexOf("mm");
+  var dayIndex = formatItems.indexOf("dd");
+  var yearIndex = formatItems.indexOf("yyyy");
+  var month = parseInt(dateItems[monthIndex]);
+  month -= 1;
+  var formatedDate = new Date(dateItems[yearIndex], month, dateItems[dayIndex]);
+  return formatedDate;
 }

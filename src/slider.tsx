@@ -14,6 +14,7 @@ class Slider extends Component {
   constructor(props) {
     super(props);
     this.sliderRef = createRef();
+    this.criteria = props.criteria;
   }
   shouldComponentUpdate(nextProps, nextState) {
     console.log({ nextProps });
@@ -22,12 +23,14 @@ class Slider extends Component {
     const { slf, slt } = criterion;
     const { min, max } = criterionData;
     var slider = this.sliderRef.current;
+    console.log({ slf, slt, min, max });
     if (slf === undefined) console.log({ min });
-    if (min !== undefined)
+    if (min !== false)
       slider.noUiSlider.updateOptions(
         { range: { min, max } },
         false // Boolean 'fireSetEvent'
       );
+
     // const newMin = Math.max([min, slf]);
 
     this.criteria = criteria;
@@ -38,13 +41,19 @@ class Slider extends Component {
     const { criterion, criterionData, setCriteria, criteriaIndex } = this.props;
     const { min, max, hasDecimalValues } = criterionData;
     const { slf, slt } = criterion;
+    const start = [slf || min || 1, slt || max || 1];
+    console.log(start);
     noUiSlider.create(slider, {
-      start: [slf || min, slt || max],
+      start,
       connect: true,
       tooltips: wnumb({ decimals: 0 }),
       range: {
         min,
         max,
+      },
+      pips: {
+        mode: "range",
+        density: 3,
       },
       step: 1,
     });
@@ -60,6 +69,8 @@ class Slider extends Component {
       let value = criteria[criteriaIndex];
       value.slf = newFrom;
       value.slt = newTo;
+      value.q = "";
+      delete value.rel;
       console.log(JSON.stringify(cr));
       cr = cr.map((c, i) => (i === criteriaIndex ? value : c));
       console.log(JSON.stringify(cr));
@@ -88,6 +99,7 @@ const Sliderex = (props) => {
         min,
         max,
       },
+
       step: 1,
     });
     slider.noUiSlider.on("end", (val) => {
