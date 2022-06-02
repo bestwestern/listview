@@ -74,7 +74,20 @@ onmessage = function (e) {
 const analyseCriteria = () => {
   console.log("ac " + searchResults.length);
   let criterionDataArray = [];
+  let activeCriterionIndex = 0;
   currentCriteria.forEach((criterion) => {
+    const currentCriterionIsActive = isCriterionActive(criterion);
+    let rowIdsToCheck = [...searchResults];
+    if (currentCriterionIsActive) {
+      currentCriteriaHits.forEach((criteriaHits, dataArrayIndex) => {
+        if (
+          criteriaHits.length === 1 &&
+          criteriaHits[0] === activeCriterionIndex
+        ) {
+          rowIdsToCheck.push(dataArray[dataArrayIndex][idIndex]);
+        }
+      });
+    }
     const { prop, q } = criterion;
     const dataType = dataTypes[prop];
     if (dataType) {
@@ -102,8 +115,8 @@ const analyseCriteria = () => {
           let min = false,
             max = false;
           let hasDecimalValues = false;
-          for (var i = 0; i < searchResults.length; i++) {
-            const rowVal = dataDictionary[searchResults[i]][index];
+          for (var i = 0; i < rowIdsToCheck.length; i++) {
+            const rowVal = dataDictionary[rowIdsToCheck[i]][index];
             if (rowVal % 1 !== 0) hasDecimalValues = true;
             if (min == false || min > rowVal) min = rowVal;
             if (max == false || max < rowVal) max = rowVal;
@@ -116,24 +129,26 @@ const analyseCriteria = () => {
           break;
       }
     } else criterionDataArray.push(null);
+    if (currentCriterionIsActive) activeCriterionIndex++;
   });
   postMessage({ criterionDataArray });
 };
 const getActiveCriteriaFromArray = (criteriaArray) => {
-  return criteriaArray.filter((criterion) => {
-    const { prop, q } = criterion;
-    if (dataTypes[prop]) {
-      if (dataTypes[prop].colType === "string") {
-        if (q.trim().length) return true;
-      }
-      if (dataTypes[prop].colType === "number") {
-        if (q.trim().length) return true;
-        const { slf, slt } = criterion;
-        if (slf !== undefined || slt !== undefined) return true;
-      }
+  return criteriaArray.filter(isCriterionActive);
+};
+const isCriterionActive = (criterion) => {
+  const { prop, q } = criterion;
+  if (dataTypes[prop]) {
+    if (dataTypes[prop].colType === "string") {
+      if (q.trim().length) return true;
     }
-    return false;
-  });
+    if (dataTypes[prop].colType === "number") {
+      if (q.trim().length) return true;
+      const { slf, slt } = criterion;
+      if (slf !== undefined || slt !== undefined) return true;
+    }
+  }
+  return false;
 };
 const createHeaders = (dataColumns, indecies = []) => {
   let currentDataColumns = dataColumns;
@@ -332,9 +347,7 @@ const searchData = (currentSearchCount, fromIndex = 0) => {
         currentCriteriaHits[rowIndex].push(activeCriteriaIndex);
       activeCriteriaIndex++;
     }
-    if (currentCriteriaHits[rowIndex].length)
-      console.log(row, currentCriteriaHits[rowIndex]);
-    else searchResults.push(row[idIndex]);
+    if (!currentCriteriaHits[rowIndex].length) searchResults.push(row[idIndex]);
   }
 
   sendSearchResult(searchToIndex);
@@ -437,7 +450,7 @@ const sendSearchResult = (searchToIndex: number) => {
 };
 const doesRowCheckCriteria = (row, criterion) => {
   if (!criterion) return true;
-  const { prop, q, rel = "eq" } = criterion;
+  const { prop, q, rel = "eq", slf, slt } = criterion;
   const dataType = dataTypes[prop];
   if (dataType) {
     const propValue = row[dataType.index];
@@ -447,23 +460,24 @@ const doesRowCheckCriteria = (row, criterion) => {
         if (!propValue.toLowerCase().includes(q.toLowerCase())) return false;
         break;
       case "number":
-        console.log("bing " + rel);
-        switch (rel) {
-          case "eq":
-            if (propValue != q) return false;
-            break;
-          case "lt":
-            if (propValue > q) return false;
-            break;
-          case "gt":
-            if (propValue < q) return false;
-            break;
-          default: //ranger?
-            const { slf, slt } = criterion;
-            console.log({ slf, slt });
-            if (slt !== undefined && propValue > slf) return false;
-            break;
+        if (q.length) {
+          switch (rel) {
+            case "eq":
+              if (propValue != q) return false;
+              break;
+            case "lt":
+              if (propValue > q) return false;
+              break;
+            case "gt":
+              if (propValue < q) return false;
+              break;
+          }
+          return true;
         }
+        let ok = true;
+        if (slt !== undefined && propValue > slt) ok = false;
+        if (slf !== undefined && propValue < slf) ok = false;
+        return ok;
         break;
     }
     return true;
