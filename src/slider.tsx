@@ -25,11 +25,16 @@ class Slider extends Component {
     var slider = this.sliderRef.current;
     console.log({ slf, slt, min, max });
     if (slf === undefined) console.log({ min });
-    if (min !== false)
+    if (min !== false) {
       slider.noUiSlider.updateOptions(
         { range: { min, max } },
         false // Boolean 'fireSetEvent'
       );
+      slider.noUiSlider.set([
+        Math.max(min, slf === undefined ? min : slf),
+        Math.min(max, slt === undefined ? max : slt),
+      ]);
+    }
 
     // const newMin = Math.max([min, slf]);
 
@@ -70,8 +75,6 @@ class Slider extends Component {
       value.slf = newFrom;
       value.slt = newTo;
       value.q = "";
-      delete value.rel;
-      console.log(JSON.stringify(cr));
       cr = cr.map((c, i) => (i === criteriaIndex ? value : c));
       console.log(JSON.stringify(cr));
       setCriteria(cr);

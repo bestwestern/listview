@@ -95,8 +95,8 @@ const analyseCriteria = () => {
       const { index } = dataType;
       switch (dataType.colType) {
         case "string":
-          for (var i = 0; i < searchResults.length; i++) {
-            const rowVal = dataDictionary[searchResults[i]][index];
+          for (var i = 0; i < rowIdsToCheck.length; i++) {
+            const rowVal = dataDictionary[rowIdsToCheck[i]][index];
             criterionData[rowVal] = criterionData[rowVal]
               ? criterionData[rowVal] + 1
               : 1;
@@ -137,14 +137,15 @@ const getActiveCriteriaFromArray = (criteriaArray) => {
   return criteriaArray.filter(isCriterionActive);
 };
 const isCriterionActive = (criterion) => {
-  const { prop, q } = criterion;
+  const { prop, q, arr = [], slf, slt } = criterion;
   if (dataTypes[prop]) {
+    // do switch
     if (dataTypes[prop].colType === "string") {
       if (q.trim().length) return true;
+      if (arr.length) return true;
     }
     if (dataTypes[prop].colType === "number") {
       if (q.trim().length) return true;
-      const { slf, slt } = criterion;
       if (slf !== undefined || slt !== undefined) return true;
     }
   }
@@ -450,13 +451,14 @@ const sendSearchResult = (searchToIndex: number) => {
 };
 const doesRowCheckCriteria = (row, criterion) => {
   if (!criterion) return true;
-  const { prop, q, rel = "eq", slf, slt } = criterion;
+  const { prop, q, rel = "eq", slf, slt, arr = [] } = criterion;
   const dataType = dataTypes[prop];
   if (dataType) {
     const propValue = row[dataType.index];
     const { colType } = dataType;
     switch (colType) {
       case "string":
+        if (arr.length && !arr.includes(propValue)) return false;
         if (!propValue.toLowerCase().includes(q.toLowerCase())) return false;
         break;
       case "number":

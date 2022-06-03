@@ -11,56 +11,16 @@ export function CriterionNumber({
   setCriteria,
   criteriaIndex,
 }) {
-  // const slider = useMemo(
-  //   () => makeSlider(min, max, hasDecimalValues),
-  //   [min, max, hasDecimalValues]
-  // );
-  // console.log(criterionData);
   const { q, rel = "eq", slf, slt } = criterion; //slf=sliderFrom, slt=sliderTo
-  // useEffect(() => {
-  //   var slider = sliderRef.current;
-  //   noUiSlider.create(slider, {
-  //     start: [slf || 0, slt || 0],
-  //     connect: true,
-  //     tooltips: wnumb({ decimals: 0 }),
-  //     range: {
-  //       min: 0,
-  //       max,
-  //     },
-  //     step: 1,
-  //     format: {
-  //       to,
-  //       from,
-  //     },
-  //   });
-  //   slider.noUiSlider.on("end", (val) => {
-  //     let [newFrom, newTo] = val;
-  //     if (!hasDecimalValues) {
-  //       newFrom = Math.round(newFrom);
-  //       newTo = Math.round(newTo);
-  //     }
-  //     updateCriterion({ ...criterion, slf: newFrom, slt: newTo });
-  //   });
-  // }, []);
-  // useEffect(() => {
-  //   var slider = sliderRef.current;
-  //   console.log({ min, max });
-  //   // if (slf!==undefined||slt!==undefined){
-  //   //   let newSlf
-  //   //   if (slf!==undefined)
-  //   // }
-  //   slider.noUiSlider.updateOptions(
-  //     { range: { min, max } },
-  //     false // Boolean 'fireSetEvent'
-  //   );
-  //   // const newMin = Math.max([min, slf]);
-  //   // slider.noUiSlider.set([newMin, max]);
-  // }, [min, max]);
-  // useEffect(() => {
-  //   slider.noUiSlider.set([min, max]);
-  // }, [slf, slt]);
-  const updateCriterionProp = ({ prop, value }) => {
-    updateCriterion({ ...criterion, [prop]: value });
+  const updateCriterionProp = (obj) => {
+    updateCriterion({ ...criterion, ...obj });
+  };
+  const qChange = (e) => {
+    let newCriterion = { ...criterion };
+    delete newCriterion.slf;
+    delete newCriterion.slt;
+    newCriterion.q = e.target.value;
+    updateCriterion(newCriterion);
   };
   return (
     <>
@@ -72,9 +32,7 @@ export function CriterionNumber({
         ].map(({ txt, shortName }) => (
           <button
             type="button"
-            onClick={(e) =>
-              updateCriterionProp({ prop: "rel", value: shortName })
-            }
+            onClick={(e) => updateCriterionProp({ rel: shortName })}
             class={
               rel === shortName
                 ? "btn btn-outline-primary"
@@ -84,13 +42,7 @@ export function CriterionNumber({
             {txt}
           </button>
         ))}
-        <input
-          type="text"
-          value={q}
-          onInput={(e) =>
-            updateCriterionProp({ prop: "q", value: e.target.value })
-          }
-        />
+        <input type="text" value={q} onInput={qChange} />
       </p>
       <p
         style={{
@@ -98,7 +50,6 @@ export function CriterionNumber({
           padding: "30px",
         }}
       >
-        <pre>{JSON.stringify(criteria, null, 2)}</pre>
         <Slider
           criterionData={criterionData}
           criterion={criterion}
