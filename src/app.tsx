@@ -148,6 +148,7 @@ export function App(props) {
         dataTypes={dataTypes}
         setQuery={setQuery}
         query={query}
+        defaultdateformat={defaultdateformat}
         criteria={criteria}
         setCriteria={setCriteria}
         criterionDataArray={criterionDataArray}

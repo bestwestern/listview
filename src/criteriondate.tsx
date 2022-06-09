@@ -1,12 +1,13 @@
 //import "nouislider/dist/nouislider.css";
-import { Slider } from "./slidernumber";
+import { SliderDate } from "./sliderdate";
 
-export function CriterionNumber({
+export function CriterionDate({
   criterion,
   criteria,
   updateCriterion,
   criterionData,
   setCriteria,
+  defaultdateformat,
   criteriaIndex,
 }) {
   const { q, rel = "eq" } = criterion; //slf=sliderFrom, slt=sliderTo
@@ -25,8 +26,8 @@ export function CriterionNumber({
       <p>
         {[
           { txt: "Equals", shortName: "eq" },
-          { txt: "At least", shortName: "mt" },
-          { txt: "Less than (or equal to)", shortName: "lt" },
+          { txt: "After", shortName: "mt" },
+          { txt: "Before", shortName: "lt" },
         ].map(({ txt, shortName }) => (
           <button
             type="button"
@@ -40,15 +41,24 @@ export function CriterionNumber({
             {txt}
           </button>
         ))}
-        <input type="text" value={q} onInput={qChange} />
+        <input
+          type="text"
+          value={q}
+          onInput={qChange}
+          placeholder={defaultdateformat
+            .replaceAll(".", "")
+            .replaceAll("/", "")
+            .replaceAll("-", "")}
+        />
       </p>
       <p
         style={{
           display: "block",
-          padding: "30px",
+          padding: "45px",
         }}
       >
-        <Slider
+        <SliderDate
+          defaultdateformat={defaultdateformat}
           criterionData={criterionData}
           criterion={criterion}
           criteria={criteria}

@@ -1,6 +1,7 @@
 import { useState } from "preact/hooks";
 import { CriterionText } from "./criteriontext";
 import { CriterionNumber } from "./criterionnumber";
+import { CriterionDate } from "./criteriondate";
 export function CriteriaSection({
   dataTypes,
   query,
@@ -10,6 +11,7 @@ export function CriteriaSection({
   customCriteria,
   criterionDataArray,
   setCriterionDataArray,
+  defaultdateformat,
 }) {
   const [addingCriteria, setAddingCriteria] = useState(false);
   const [addingCriteriaQuery, setAddingCriteriaQuery] = useState("");
@@ -27,33 +29,51 @@ export function CriteriaSection({
     const criterionData = criterionDataArray[index] || [];
     if (Object.keys(dataTypes).length > 0) {
       if (dataTypes[prop]) {
-        if (dataTypes[prop].colType === "string")
-          return (
-            <>
-              <span>{dataTypes[prop].header}</span>
-              <CriterionText
-                criterion={criterion}
-                updateCriterion={updateCriterion.bind(this, index)}
-                criterionData={criterionData}
-              ></CriterionText>
-            </>
-          );
-        else if (dataTypes[prop].colType === "number") {
-          return (
-            <>
-              <span>{dataTypes[prop].header}</span>
-              {criterionData && criterionData.max !== undefined && (
-                <CriterionNumber
+        switch (dataTypes[prop].colType) {
+          case "string":
+            return (
+              <>
+                <span>{dataTypes[prop].header}</span>
+                <CriterionText
                   criterion={criterion}
                   updateCriterion={updateCriterion.bind(this, index)}
                   criterionData={criterionData}
-                  criteria={criteria}
-                  setCriteria={setCriteria}
-                  criteriaIndex={index}
-                ></CriterionNumber>
-              )}
-            </>
-          );
+                ></CriterionText>
+              </>
+            );
+          case "number":
+            return (
+              <>
+                <span>{dataTypes[prop].header}</span>
+                {criterionData && criterionData.max !== undefined && (
+                  <CriterionNumber
+                    criterion={criterion}
+                    updateCriterion={updateCriterion.bind(this, index)}
+                    criterionData={criterionData}
+                    criteria={criteria}
+                    setCriteria={setCriteria}
+                    criteriaIndex={index}
+                  ></CriterionNumber>
+                )}
+              </>
+            );
+          case "date":
+            return (
+              <>
+                <span>{dataTypes[prop].header}</span>
+                {criterionData && criterionData.maxDate !== undefined && (
+                  <CriterionDate
+                    criterion={criterion}
+                    defaultdateformat={defaultdateformat}
+                    updateCriterion={updateCriterion.bind(this, index)}
+                    criterionData={criterionData}
+                    criteria={criteria}
+                    setCriteria={setCriteria}
+                    criteriaIndex={index}
+                  ></CriterionDate>
+                )}
+              </>
+            );
         }
       } else {
         let Crit = customCriteria.find((cc) => cc.shortName === prop);

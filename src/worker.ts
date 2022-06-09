@@ -25,6 +25,7 @@ let currentCriteria = [];
 let customCriteria = {};
 let dateStringValuesForProps = {};
 let statisticSettings = { a: 1 };
+let defaultDateFormat;
 onmessage = function (e) {
   const {
     data,
@@ -40,7 +41,8 @@ onmessage = function (e) {
     makeSimpleStat();
   }
   if (data) {
-    analyzeData(data, defaultdateformat);
+    defaultDateFormat = defaultdateformat;
+    analyzeData(data);
   }
   if (query !== undefined && query !== currentQuery) {
     currentQuery = query || "";
@@ -127,6 +129,22 @@ const analyseCriteria = () => {
             hasDecimalValues,
           });
           break;
+        case "date":
+          let minDate = false,
+            maxDate = false;
+          for (var i = 0; i < rowIdsToCheck.length; i++) {
+            const rowVal = dataDictionary[rowIdsToCheck[i]][index];
+            const ms = rowVal && rowVal.getTime();
+            if (ms) {
+              if (minDate == false || minDate > ms) minDate = ms;
+              if (maxDate == false || maxDate < ms) maxDate = ms;
+            }
+          }
+          criterionDataArray.push({
+            minDate,
+            maxDate,
+          });
+          break;
       }
     } else criterionDataArray.push(null);
     if (currentCriterionIsActive) activeCriterionIndex++;
@@ -138,17 +156,22 @@ const getActiveCriteriaFromArray = (criteriaArray) => {
 };
 const isCriterionActive = (criterion) => {
   const { prop, q, arr = [], slf, slt } = criterion;
-  if (dataTypes[prop]) {
-    // do switch
-    if (dataTypes[prop].colType === "string") {
-      if (q.trim().length) return true;
-      if (arr.length) return true;
+  if (dataTypes[prop])
+    switch (dataTypes[prop].colType) {
+      // do switch
+      case "string":
+        if (q.trim().length) return true;
+        if (arr.length) return true;
+        break;
+      case "number":
+        if (q.trim().length) return true;
+        if (slf !== undefined || slt !== undefined) return true;
+        break;
+      case "date":
+        if (q.trim().length && q.trim().length === 8) return true;
+        if (slf !== undefined || slt !== undefined) return true;
+        break;
     }
-    if (dataTypes[prop].colType === "number") {
-      if (q.trim().length) return true;
-      if (slf !== undefined || slt !== undefined) return true;
-    }
-  }
   return false;
 };
 const createHeaders = (dataColumns, indecies = []) => {
@@ -211,11 +234,11 @@ function makeIterator(indecies, row) {
   return rangeIterator;
 }
 
-const addDataTypes = (prop, dataType, defaultdateformat, indecies = []) => {
+const addDataTypes = (prop, dataType, indecies = []) => {
   const propIndex = dataType.index; //move to else
   if (dataType.dataTypes) {
     Object.keys(dataType.dataTypes).forEach((subProp) =>
-      addDataTypes(subProp, dataType.dataTypes[subProp], defaultdateformat, [
+      addDataTypes(subProp, dataType.dataTypes[subProp], [
         ...indecies,
         dataType.index,
       ])
@@ -276,7 +299,7 @@ const addDataTypes = (prop, dataType, defaultdateformat, indecies = []) => {
     }
 };
 
-const analyzeData = (data, defaultdateformat) => {
+const analyzeData = (data) => {
   const { rows } = data;
 
   columnHeaders = data.columnHeaders || {};
@@ -297,7 +320,7 @@ const analyzeData = (data, defaultdateformat) => {
     //data has rows property which is array of arrays. Must have a rowid property
     idIndex = columns.indexOf("rowid");
     Object.keys(dataTypes).forEach((prop) =>
-      addDataTypes(prop, dataTypes[prop], defaultdateformat)
+      addDataTypes(prop, dataTypes[prop])
     );
     console.log(dataTypes);
     for (var i = 0; i < dataArray.length; i++) {
@@ -308,7 +331,7 @@ const analyzeData = (data, defaultdateformat) => {
     }
     let sortedColArray = dataColumns.map((prop) => {
       if (dataTypes[prop] && dataTypes[prop].colType === "date")
-        return { prop, dateFormat: defaultdateformat };
+        return { prop, dateFormat: defaultDateFormat };
       if (dataTypes[prop] && dataTypes[prop].colType === "array")
         return { prop, format: "1col" };
       if (typeof prop === "object") return { prop: Object.keys(prop)[0] };
@@ -456,6 +479,7 @@ const doesRowCheckCriteria = (row, criterion) => {
   if (dataType) {
     const propValue = row[dataType.index];
     const { colType } = dataType;
+    console.log(colType);
     switch (colType) {
       case "string":
         if (arr.length && !arr.includes(propValue)) return false;
@@ -480,6 +504,32 @@ const doesRowCheckCriteria = (row, criterion) => {
         if (slt !== undefined && propValue > slt) ok = false;
         if (slf !== undefined && propValue < slf) ok = false;
         return ok;
+        break;
+      case "date":
+        if (q.length) {
+          switch (rel) {
+            case "eq":
+              if (
+                dateToString(propValue, defaultDateFormat)
+                  .replaceAll(".", "")
+                  .replaceAll("/", "")
+                  .replaceAll("-", "") != q
+              )
+                return false;
+              break;
+            case "lt":
+              if (propValue > q) return false;
+              break;
+            case "gt":
+              if (propValue < q) return false;
+              break;
+          }
+          return true;
+        }
+        let dateOk = true;
+        if (slt !== undefined && propValue > slt) dateOk = false;
+        if (slf !== undefined && propValue < slf) dateOk = false;
+        return dateOk;
         break;
     }
     return true;

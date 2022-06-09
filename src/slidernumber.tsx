@@ -17,13 +17,10 @@ class Slider extends Component {
     this.criteria = props.criteria;
   }
   shouldComponentUpdate(nextProps, nextState) {
-    console.log({ nextProps });
-    console.log({ cur: this.props });
     const { criteria, criterion, criterionData } = nextProps;
     const { slf, slt } = criterion;
     const { min, max } = criterionData;
     var slider = this.sliderRef.current;
-    console.log({ slf, slt, min, max });
     if (slf === undefined) console.log({ min });
     if (min !== false) {
       slider.noUiSlider.updateOptions(

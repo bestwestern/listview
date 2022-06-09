@@ -1372,7 +1372,7 @@ function setData() {
     "Cough",
     "Shortness of breath",
     "Exhaustion",
-    "Headeach",
+    "Headache",
     "Runny nose",
     "Diarrhea",
   ];
