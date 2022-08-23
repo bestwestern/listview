@@ -26,4 +26,7 @@ function dateToString(_date: Date, format: string) {
     .replace("yyyy", yyyy.toString())
     .replace("yy", yy);
 }
-export { dateToString };
+function add(...args: number[]) {
+  return args.reduce((a, b) => a + b, 0);
+}
+export { dateToString, add };
