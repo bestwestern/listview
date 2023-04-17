@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.18.10",
+    "path": "0.12.7",
     "@preact/preset-vite": "^2.1.5",
     "@testing-library/preact": "^3.2.2",
     "@vitest/ui": "^0.22.1",
